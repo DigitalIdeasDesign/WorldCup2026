@@ -1,0 +1,82 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user profile information.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "firstName": { "type": "string", "description": "The user's first name." },
+        "lastName": { "type": "string", "description": "The user's last name." },
+        "email": { "type": "string", "format": "email", "description": "The user's email address." },
+        "nationality": { "type": "string", "description": "The user's nationality." },
+        "favoriteTeams": { "type": "array", "items": { "type": "string" }, "description": "The user's favorite national teams." },
+        "favoritePlayers": { "type": "array", "items": { "type": "string" }, "description": "The user's favorite players." },
+        "favoriteClubs": { "type": "array", "items": { "type": "string" }, "description": "The user's favorite clubs." },
+        "favoriteTeam": { "type": "string", "description": "Legacy: The user's favorite national team." },
+        "favoritePlayer": { "type": "string", "description": "Legacy: The user's favorite player." },
+        "favoriteClub": { "type": "string", "description": "Legacy: The user's favorite club." },
+        "photoURL": { "type": "string", "description": "The user's photo URL." },
+        "nomination": { "type": "string", "description": "The user's chosen identity nomination." },
+        "hasSeenOnboarding": { "type": "boolean", "description": "Whether the user has completed the onboarding briefing." },
+        "role": { "type": "string", "enum": ["admin", "user"], "description": "The user's role." },
+        "createdAt": { "type": "number", "description": "Timestamp of creation." },
+        "updatedAt": { "type": "number", "description": "Timestamp of last update." }
+      },
+      "required": ["displayName", "email", "role", "createdAt"]
+    },
+    "UserPredictions": {
+      "title": "User Predictions",
+      "description": "Stores the user's tournament predictions.",
+      "type": "object",
+      "properties": {
+        "groupRankings": { "type": "object", "description": "Rankings for each group." },
+        "wildcards": { "type": "array", "items": { "type": "string" }, "description": "Selected wildcard teams." },
+        "bracket": { "type": "object", "description": "The tournament bracket picks." },
+        "awards": { "type": "object", "description": "MVP, Golden Boot, Golden Glove picks." },
+        "isLocked": { "type": "boolean", "description": "Whether the predictions are locked." },
+        "updatedAt": { "type": "number", "description": "Timestamp of last update." }
+      },
+      "required": ["groupRankings", "wildcards", "bracket", "awards", "isLocked", "updatedAt"]
+    },
+    "LeaderboardEntry": {
+      "title": "Leaderboard Entry",
+      "description": "Publicly accessible summary of a user's predictions.",
+      "type": "object",
+      "properties": {
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "firstName": { "type": "string", "description": "The user's first name." },
+        "lastName": { "type": "string", "description": "The user's last name." },
+        "nationality": { "type": "string", "description": "The user's nationality." },
+        "favoriteTeams": { "type": "array", "items": { "type": "string" }, "description": "The user's favorite national teams." },
+        "favoritePlayers": { "type": "array", "items": { "type": "string" }, "description": "The user's favorite players." },
+        "favoriteClubs": { "type": "array", "items": { "type": "string" }, "description": "The user's favorite clubs." },
+        "favoriteTeam": { "type": "string", "description": "Legacy: The user's favorite national team." },
+        "favoritePlayer": { "type": "string", "description": "Legacy: The user's favorite player." },
+        "favoriteClub": { "type": "string", "description": "Legacy: The user's favorite club." },
+        "champion": { "type": "string", "description": "The user's champion pick." },
+        "mvp": { "type": "string", "description": "The user's MVP pick." },
+        "goldenBoot": { "type": "string", "description": "The user's Golden Boot pick." },
+        "goldenGlove": { "type": "string", "description": "The user's Golden Glove pick." },
+        "nomination": { "type": "string", "description": "The user's chosen identity nomination." },
+        "isLocked": { "type": "boolean", "description": "Whether the predictions are locked." },
+        "updatedAt": { "type": "number", "description": "Timestamp of last update." }
+      },
+      "required": ["displayName", "champion", "mvp", "isLocked", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": { "$ref": "UserProfile" },
+      "description": "User profile documents."
+    },
+    "predictions/{userId}": {
+      "schema": { "$ref": "UserPredictions" },
+      "description": "User prediction documents."
+    },
+    "leaderboard/{userId}": {
+      "schema": { "$ref": "LeaderboardEntry" },
+      "description": "Public leaderboard entries."
+    }
+  }
+}

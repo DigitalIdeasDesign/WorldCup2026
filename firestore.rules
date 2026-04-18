@@ -1,0 +1,142 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId
+    // Fields:
+    //   - displayName: string (required)
+    //   - email: string (required, email format)
+    //   - photoURL: string (optional)
+    //   - role: string (required, 'admin' or 'user')
+    //   - createdAt: number (required)
+    //
+    // Collection: predictions
+    // Document ID: userId
+    // Fields:
+    //   - groupRankings: map (required)
+    //   - wildcards: list (required)
+    //   - bracket: map (required)
+    //   - awards: map (required)
+    //   - isLocked: boolean (required)
+    //   - updatedAt: number (required)
+    //
+    // Collection: leaderboard
+    // Document ID: userId
+    // Fields:
+    //   - displayName: string (required)
+    //   - champion: string (required)
+    //   - mvp: string (required)
+    //   - isLocked: boolean (required)
+    //   - updatedAt: number (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "digitalideasdesign@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(['displayName', 'email']) &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 50 &&
+             isValidEmail(data.email) &&
+             (!('hasSeenOnboarding' in data) || data.hasSeenOnboarding is bool) &&
+             (!('role' in data) || data.role in ['admin', 'user']) &&
+             (!('createdAt' in data) || data.createdAt is number) &&
+             (!('updatedAt' in data) || data.updatedAt is number);
+    }
+
+    function isValidPrediction(data) {
+      return hasRequiredFields(['groupRankings', 'wildcards', 'bracket', 'awards', 'isLocked', 'updatedAt']) &&
+             data.groupRankings is map &&
+             data.wildcards is list &&
+             data.bracket is map &&
+             data.awards is map &&
+             data.isLocked is bool &&
+             data.updatedAt is number;
+    }
+
+    function isValidLeaderboardEntry(data) {
+      return hasRequiredFields(['displayName', 'champion', 'mvp', 'isLocked', 'updatedAt']) &&
+             data.displayName is string && data.displayName.size() > 0 && data.displayName.size() < 100 &&
+             data.champion is string &&
+             data.mvp is string &&
+             data.isLocked is bool &&
+             data.updatedAt is number &&
+             (!('potentialPoints' in data) || data.potentialPoints is number) &&
+             (!('firstName' in data) || data.firstName is string) &&
+             (!('lastName' in data) || data.lastName is string) &&
+             (!('nationality' in data) || data.nationality is string) &&
+             (!('favoriteTeams' in data) || data.favoriteTeams is list) &&
+             (!('favoritePlayers' in data) || data.favoritePlayers is list) &&
+             (!('favoriteClubs' in data) || data.favoriteClubs is list) &&
+             (!('goldenBoot' in data) || data.goldenBoot is string) &&
+             (!('goldenGlove' in data) || data.goldenGlove is string);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == 'user' || isAdmin());
+      allow update: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /predictions/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) && isValidPrediction(request.resource.data);
+      allow update: if isOwner(userId) && 
+                      (!('isLocked' in resource.data) || resource.data.isLocked == false) && 
+                      isValidPrediction(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /leaderboard/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && isValidLeaderboardEntry(request.resource.data);
+      allow update: if isOwner(userId) && isValidLeaderboardEntry(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,22 @@
+export const TOP_20_FIFA_NATIONS = [
+  "Argentina",
+  "France",
+  "Spain",
+  "England",
+  "Brazil",
+  "Belgium",
+  "Portugal",
+  "Netherlands",
+  "Italy",
+  "Colombia",
+  "Croatia",
+  "Germany",
+  "Morocco",
+  "Uruguay",
+  "USA",
+  "Mexico",
+  "Switzerland",
+  "Japan",
+  "Iran",
+  "Senegal"
+];
