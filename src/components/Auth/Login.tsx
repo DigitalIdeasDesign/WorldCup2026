@@ -41,7 +41,7 @@ export default function Login() {
   };
 
   return (
-    <main className="relative min-h-screen w-full flex items-center justify-center p-4 md:p-8">
+    <main className="relative min-h-screen w-full flex items-start lg:items-center justify-center p-4 md:p-8 pt-28 lg:pt-0">
       {/* Background Asset */}
       <div className="fixed inset-0 z-0 overflow-hidden">
         <div className="absolute inset-0 bg-black/40 z-10"></div>
@@ -54,12 +54,12 @@ export default function Login() {
       </div>
 
       {/* Top App Bar Branding */}
-      <header className="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-8 h-20">
+      <header className="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-4 md:px-8 h-20">
         <div className="flex flex-col">
-          <div className="text-2xl font-headline font-black text-primary tracking-[-0.04em] uppercase leading-none">
+          <div className="text-xl md:text-2xl font-headline font-black text-primary tracking-[-0.04em] uppercase leading-none">
             FIFA WORLD CUP 2026
           </div>
-          <div className="text-[10px] font-bold text-outline-variant tracking-widest uppercase mt-1">
+          <div className="text-[11px] md:text-xs font-bold text-outline-variant tracking-widest uppercase mt-1">
             Carlos, Family and Friends Elite Pool
           </div>
         </div>
@@ -78,31 +78,49 @@ export default function Login() {
             <span className="text-[10px] font-bold tracking-[0.2em] text-white uppercase">Official Global Entry</span>
           </div>
           <h1 className="text-6xl xl:text-8xl font-headline font-black text-white leading-[0.9] tracking-tighter uppercase">
-            Define <span className="text-primary">Legacy.</span>
+            Define <span className="text-primary">“Trust the Process.”</span>
           </h1>
           <p className="text-lg text-on-surface-variant max-w-md font-medium leading-relaxed">
-            Access the world's most exclusive prediction pool. Compete against global elites for the definitive 2026 championship title.
+            Pick with confidence, panic immediately, and revise your logic mid-game. It’s all part of the strategy.
           </p>
           
           <div className="flex items-center gap-8 mt-4">
             <div>
               <div className="text-3xl font-headline font-black text-white tracking-tight">104</div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-secondary">Total Fixtures</div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-secondary">Emotional Rollercoasters</div>
             </div>
             <div className="h-10 w-[1px] bg-white/10"></div>
             <div>
               <div className="text-3xl font-headline font-black text-white tracking-tight">12</div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-secondary">Elite Groups</div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-secondary">Part-Time Coaches</div>
             </div>
           </div>
         </div>
 
         {/* Right Side: Login Card */}
-        <div className="lg:col-span-6 flex justify-center lg:justify-end">
-          <div className="glass-card w-full max-w-[480px] p-8 md:p-10 rounded-xl border border-white/10 shadow-[0_48px_100px_-12px_rgba(0,0,0,0.5)]">
-            <div className="mb-10">
-              <h2 className="text-2xl font-headline font-black text-white tracking-tight uppercase">Authenticate</h2>
-              <div className="h-1 w-12 bg-primary mt-2"></div>
+        <div className="lg:col-span-6 flex flex-col items-center lg:items-end gap-6 w-full">
+          {/* Mobile-only Scout Intel Rail */}
+          <div className="flex lg:hidden items-center gap-4 px-4 py-2 bg-white/5 rounded-full border border-white/5 backdrop-blur-md">
+            <div className="flex flex-col items-center">
+              <span className="text-sm font-headline font-black text-white">104</span>
+              <span className="text-[10px] font-black uppercase text-secondary tracking-tighter">Rollercoasters</span>
+            </div>
+            <div className="w-[1px] h-4 bg-white/10" />
+            <div className="flex flex-col items-center">
+              <span className="text-sm font-headline font-black text-white">12</span>
+              <span className="text-[10px] font-black uppercase text-secondary tracking-tighter">Coaches</span>
+            </div>
+            <div className="w-[1px] h-4 bg-white/10" />
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[14px] text-primary">verified</span>
+              <span className="text-[11px] font-black uppercase text-white tracking-widest">Global Entry</span>
+            </div>
+          </div>
+
+          <div className="glass-card w-full max-w-[480px] p-5 sm:p-10 rounded-xl border border-white/10 shadow-[0_48px_100px_-12px_rgba(0,0,0,0.5)]">
+            <div className="mb-8 md:mb-10 text-center sm:text-left">
+              <h2 className="text-xl md:text-2xl font-headline font-black text-white tracking-tight uppercase">Authenticate</h2>
+              <div className="h-1 w-12 bg-primary mt-2 mx-auto sm:mx-0"></div>
             </div>
 
             <form onSubmit={handleEmailLogin} className="space-y-6">
@@ -156,15 +174,15 @@ export default function Login() {
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-white/10"></div>
               </div>
-              <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">
-                <span className="bg-[#1a1a1a] px-4">Or authenticate with</span>
+              <div className="relative flex justify-center text-xs uppercase font-bold tracking-widest text-on-surface-variant">
+                <span className="bg-[#1a1a1a] px-5">Or authenticate with</span>
               </div>
             </div>
 
             <button 
               onClick={handleGoogleLogin}
               disabled={loading}
-              className="w-full bg-surface-container-highest/40 hover:bg-surface-container-highest/80 border border-outline-variant/20 py-4 rounded-sm flex items-center justify-center gap-3 transition-all duration-300"
+              className="w-full bg-surface-container-highest/40 hover:bg-surface-container-highest/80 border border-outline-variant/20 py-5 rounded-sm flex items-center justify-center gap-3 transition-all duration-300"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -177,7 +195,7 @@ export default function Login() {
 
             {/* Footer Link */}
             <div className="mt-8 pt-8 border-t border-white/5 flex justify-center">
-              <p className="text-sm text-on-surface-variant">
+              <p className="text-base text-on-surface-variant">
                 Not part of the Elite? <Link to="/register" className="text-primary font-bold hover:text-white transition-colors">Apply Now</Link>
               </p>
             </div>
@@ -188,19 +206,19 @@ export default function Login() {
       {/* Utility Icons Footer */}
       <footer className="fixed bottom-8 left-8 hidden lg:flex items-center gap-12">
         <div className="flex items-center gap-4">
-          <span className="material-symbols-outlined text-outline-variant text-xl">shield</span>
-          <span className="text-[10px] font-bold text-outline-variant uppercase tracking-widest">End-to-End Encryption</span>
+          <span className="material-symbols-outlined text-outline-variant text-3xl">shield</span>
+          <span className="text-sm font-bold text-outline-variant uppercase tracking-widest">End-to-End Encryption</span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="material-symbols-outlined text-outline-variant text-xl">workspace_premium</span>
-          <span className="text-[10px] font-bold text-outline-variant uppercase tracking-widest">Official 2026 Partner</span>
+          <span className="material-symbols-outlined text-outline-variant text-3xl">workspace_premium</span>
+          <span className="text-sm font-bold text-outline-variant uppercase tracking-widest">Official 2026 Partner</span>
         </div>
       </footer>
 
       {/* Language Selector */}
       <div className="fixed bottom-8 right-8 hidden md:block">
-        <button className="flex items-center gap-2 text-[10px] font-black text-white/40 uppercase tracking-tighter hover:text-primary transition-colors">
-          <span className="material-symbols-outlined text-sm">language</span>
+        <button className="flex items-center gap-2 text-xs font-black text-white/40 uppercase tracking-tighter hover:text-primary transition-colors">
+          <span className="material-symbols-outlined text-base">language</span>
           English (US)
         </button>
       </div>

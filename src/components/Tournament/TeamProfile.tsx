@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { 
@@ -16,15 +16,49 @@ import {
   Users
 } from 'lucide-react';
 import { NATIONS_DATA } from '../../constants/nationsData';
+import { SQUADS_DATA } from '../../constants/squadsData';
 
 const TeamProfile = () => {
   const { nationId } = useParams();
   const navigate = useNavigate();
   const nation = nationId ? NATIONS_DATA[nationId.toLowerCase()] : null;
+  const [activePosition, setActivePosition] = useState<string>('All');
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  const getSquadKeyForNationId = (id: string): string => {
+    const norm = id.toLowerCase();
+    if (norm === 'southkorea' || norm === 'south korea') return 'korea republic';
+    if (norm === 'iran') return 'ir iran';
+    if (norm === 'capeverde' || norm === 'cape verde') return 'cabo verde';
+    if (norm === 'ivorycoast' || norm === 'ivory coast') return "côte d'ivoire";
+    if (norm === 'newzealand' || norm === 'new zealand') return 'new zealand';
+    if (norm === 'saudiarabia' || norm === 'saudi arabia') return 'saudi arabia';
+    if (norm === 'southafrica' || norm === 'south africa') return 'south africa';
+    if (norm === 'curacao') return 'curaçao';
+    if (norm === 'turkey') return 'türkiye';
+    if (norm === 'drcongo') return 'congo dr';
+    if (norm === 'bosnia') return 'bosnia and herzegovina';
+    return norm;
+  };
+
+  const squadKey = getSquadKeyForNationId(nationId || '');
+  const squad = SQUADS_DATA[squadKey];
+  const players = squad?.players || [];
+  
+  const filteredPlayers = activePosition === 'All' 
+    ? players 
+    : players.filter(p => p.pos === activePosition);
+
+  const positions = [
+    { code: 'All', label: 'All Players' },
+    { code: 'GK', label: 'GK' },
+    { code: 'DF', label: 'DF' },
+    { code: 'MF', label: 'MF' },
+    { code: 'FW', label: 'FW' }
+  ];
 
   if (!nation) {
     return (
@@ -169,6 +203,87 @@ const TeamProfile = () => {
               </div>
             </div>
           </section>
+
+          {/* Roster / Squad Section */}
+          {squad && (
+            <section className="glass-card border border-white/10 rounded-3xl p-6 md:p-10 shadow-xl space-y-6">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-white/5">
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-headline font-black uppercase text-white flex items-center gap-3">
+                    <Users className="text-primary w-7 h-7" /> World Cup 2026 Squad
+                  </h2>
+                  <p className="text-xs text-outline-variant font-medium mt-1">
+                    Head Coach: <span className="text-white font-bold">{squad.coach}</span> • {players.length} Key Players
+                  </p>
+                </div>
+                
+                {/* Position Filters */}
+                <div className="flex flex-wrap gap-1 bg-surface-container-highest/20 p-1 rounded-xl border border-white/5 self-start">
+                  {positions.map(({ code, label }) => (
+                    <button
+                      key={code}
+                      onClick={() => setActivePosition(code)}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-headline font-black uppercase tracking-widest transition-all ${
+                        activePosition === code
+                          ? 'bg-primary text-on-primary shadow-md'
+                          : 'text-outline-variant hover:text-white'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {filteredPlayers.length === 0 ? (
+                <div className="text-center py-12 bg-surface-container-highest/10 rounded-2xl border border-dashed border-white/5">
+                  <p className="text-sm text-outline-variant font-medium">No players found in this position.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {filteredPlayers.map((player, idx) => {
+                    const posColor = 
+                      player.pos === 'GK' ? 'bg-amber-500/15 text-amber-400 border-amber-500/30' :
+                      player.pos === 'DF' ? 'bg-blue-500/15 text-blue-400 border-blue-500/30' :
+                      player.pos === 'MF' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :
+                      'bg-rose-500/15 text-rose-400 border-rose-500/30';
+                    
+                    const posLabel = 
+                      player.pos === 'GK' ? 'Goalkeeper' :
+                      player.pos === 'DF' ? 'Defender' :
+                      player.pos === 'MF' ? 'Midfielder' :
+                      'Forward';
+
+                    return (
+                      <motion.div
+                        whileHover={{ scale: 1.02, y: -2 }}
+                        key={idx}
+                        className="p-4 rounded-xl bg-surface-container-highest/10 border border-white/5 hover:border-white/10 hover:bg-surface-container-highest/25 transition-all text-left flex flex-col justify-between h-28"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-headline font-black uppercase tracking-wider border ${posColor}`}>
+                            {player.pos}
+                          </span>
+                          <span className="text-[9px] text-outline-variant font-bold uppercase tracking-wider">
+                            {posLabel}
+                          </span>
+                        </div>
+                        
+                        <div className="mt-2 text-left">
+                          <p className="font-headline font-black uppercase text-sm text-white tracking-wide truncate">
+                            {player.name}
+                          </p>
+                          <p className="text-[10px] font-semibold text-outline-variant truncate mt-1">
+                            {player.club}
+                          </p>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
 
           {/* Novice Friendly Stats */}
           <section className="space-y-6">

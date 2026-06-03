@@ -25,7 +25,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <main className="relative min-h-screen w-full flex items-center justify-center p-4 md:p-8">
+    <main className="relative min-h-screen w-full flex items-start lg:items-center justify-center p-4 md:p-8 pt-28 lg:pt-0">
       {/* Background Asset */}
       <div className="fixed inset-0 z-0 overflow-hidden">
         <div className="absolute inset-0 bg-black/40 z-10"></div>
@@ -38,12 +38,12 @@ export default function ForgotPassword() {
       </div>
 
       {/* Top App Bar Branding */}
-      <header className="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-8 h-20">
+      <header className="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-4 md:px-8 h-20">
         <div className="flex flex-col">
-          <div className="text-2xl font-headline font-black text-primary tracking-[-0.04em] uppercase leading-none">
+          <div className="text-xl md:text-2xl font-headline font-black text-primary tracking-[-0.04em] uppercase leading-none">
             FIFA WORLD CUP 2026
           </div>
-          <div className="text-[10px] font-bold text-outline-variant tracking-widest uppercase mt-1">
+          <div className="text-[11px] md:text-xs font-bold text-outline-variant tracking-widest uppercase mt-1">
             Carlos, Family and Friends Elite Pool
           </div>
         </div>
@@ -82,39 +82,39 @@ export default function ForgotPassword() {
         </div>
 
         {/* Right Side: Forgot Password Card */}
-        <div className="lg:col-span-6 flex justify-center lg:justify-end">
-          <div className="glass-card w-full max-w-[480px] p-8 md:p-10 rounded-xl border border-white/10 shadow-[0_48px_100px_-12px_rgba(0,0,0,0.5)]">
-            <div className="mb-10">
-              <h2 className="text-2xl font-headline font-black text-white tracking-tight uppercase">Reset Access</h2>
-              <div className="h-1 w-12 bg-primary mt-2"></div>
+        <div className="lg:col-span-6 flex flex-col items-center lg:items-end gap-6 w-full">
+          <div className="glass-card w-full max-w-[520px] p-8 md:p-14 rounded-2xl border border-white/10 shadow-[0_48px_100px_-12px_rgba(0,0,0,0.5)]">
+            <div className="mb-10 md:mb-12 text-center sm:text-left">
+              <h2 className="text-2xl md:text-3xl font-headline font-black text-white tracking-tight uppercase">Reset Access</h2>
+              <div className="h-1.5 w-16 bg-primary mt-3 mx-auto sm:mx-0"></div>
             </div>
 
-            <form onSubmit={handleReset} className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Email Address</label>
+            <form onSubmit={handleReset} className="space-y-8">
+              <div className="space-y-3">
+                <label className="text-xs md:text-sm font-bold uppercase tracking-wider text-on-surface-variant ml-1">Email Address</label>
                 <input 
                   type="email" 
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-surface-container-highest/40 border border-outline-variant/20 rounded-sm px-4 py-3 text-sm focus:outline-none focus:border-primary/50 text-white placeholder:text-outline-variant transition-all" 
+                  className="w-full bg-surface-container-highest/40 border border-outline-variant/20 rounded-md px-5 py-4 text-sm md:text-base focus:outline-none focus:border-primary/50 text-white placeholder:text-outline-variant transition-all" 
                   placeholder="cr7@elite-predictions.com" 
                 />
               </div>
 
               {/* CTA */}
-              <div className="pt-4 space-y-4">
+              <div className="pt-6 space-y-6">
                 <button 
                   type="submit" 
                   disabled={loading}
-                  className="w-full bg-primary-container hover:bg-primary py-4 rounded-sm flex items-center justify-center gap-3 transition-all duration-300 group disabled:opacity-50"
+                  className="w-full bg-primary-container hover:bg-primary py-5 rounded-md flex items-center justify-center gap-4 transition-all duration-300 group disabled:opacity-50"
                 >
                   {loading ? (
-                    <Loader2 className="animate-spin text-on-primary-fixed" size={20} />
+                    <Loader2 className="animate-spin text-on-primary-fixed" size={24} />
                   ) : (
                     <>
-                      <span className="text-on-primary-fixed font-headline font-black uppercase tracking-widest text-sm">Send Reset Link</span>
-                      <span className="material-symbols-outlined text-on-primary-fixed text-lg group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                      <span className="text-on-primary-fixed font-headline font-black uppercase tracking-widest text-base md:text-lg">Send Reset Link</span>
+                      <span className="material-symbols-outlined text-on-primary-fixed text-xl group-hover:translate-x-1 transition-transform">arrow_forward</span>
                     </>
                   )}
                 </button>
@@ -122,8 +122,8 @@ export default function ForgotPassword() {
             </form>
 
             {/* Footer Link */}
-            <div className="mt-8 pt-8 border-t border-white/5 flex justify-center">
-              <p className="text-sm text-on-surface-variant">
+            <div className="mt-10 pt-10 border-t border-white/5 flex justify-center">
+              <p className="text-base text-on-surface-variant">
                 Remember your credentials? <Link to="/login" className="text-primary font-bold hover:text-white transition-colors">Sign In</Link>
               </p>
             </div>
@@ -134,19 +134,19 @@ export default function ForgotPassword() {
       {/* Utility Icons Footer */}
       <footer className="fixed bottom-8 left-8 hidden lg:flex items-center gap-12">
         <div className="flex items-center gap-4">
-          <span className="material-symbols-outlined text-outline-variant text-xl">shield</span>
-          <span className="text-[10px] font-bold text-outline-variant uppercase tracking-widest">End-to-End Encryption</span>
+          <span className="material-symbols-outlined text-outline-variant text-2xl">shield</span>
+          <span className="text-xs font-bold text-outline-variant uppercase tracking-widest">End-to-End Encryption</span>
         </div>
         <div className="flex items-center gap-4">
-          <span className="material-symbols-outlined text-outline-variant text-xl">workspace_premium</span>
-          <span className="text-[10px] font-bold text-outline-variant uppercase tracking-widest">Official 2026 Partner</span>
+          <span className="material-symbols-outlined text-outline-variant text-2xl">workspace_premium</span>
+          <span className="text-xs font-bold text-outline-variant uppercase tracking-widest">Official 2026 Partner</span>
         </div>
       </footer>
 
       {/* Language Selector */}
       <div className="fixed bottom-8 right-8 hidden md:block">
-        <button className="flex items-center gap-2 text-[10px] font-black text-white/40 uppercase tracking-tighter hover:text-primary transition-colors">
-          <span className="material-symbols-outlined text-sm">language</span>
+        <button className="flex items-center gap-2 text-xs font-black text-white/40 uppercase tracking-tighter hover:text-primary transition-colors">
+          <span className="material-symbols-outlined text-base">language</span>
           English (US)
         </button>
       </div>

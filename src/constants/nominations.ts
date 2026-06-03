@@ -1,39 +1,59 @@
 export interface Nomination {
   id: string;
   title: string;
+  subtitle: string;
   description: string;
   icon: string;
 }
 
 export const NOMINATIONS: Nomination[] = [
   {
-    id: "peptical",
-    title: "Pep-tical Genius",
-    description: "Believes every problem in life can be solved with \"one more pass.\" Has diagrams for dinner conversations and rotates their friend group weekly.",
-    icon: "psychology",
-  },
-  {
-    id: "special-one",
-    title: "The Special One… Commenter",
-    description: "Declares themselves right before the match even starts. If their prediction fails, it’s because of \"respect, respect, respect\" and external conspiracies.",
-    icon: "record_voice_over",
-  },
-  {
-    id: "klopp",
-    title: "Klopp-top Optimist",
-    description: "Celebrates every goal like it’s a World Cup final—even in predictions. Fully convinced passion alone adds +20% accuracy to their picks.",
-    icon: "mood",
-  },
-  {
-    id: "carlo",
+    id: "carlo-spreadsheet",
     title: "Don Spreadsheet Carlo",
-    description: "Cool, calm, and somehow always right. Claims their predictions are \"just vibes,\" but secretly runs advanced analytics behind the scenes.",
+    subtitle: "The Silent Calculator",
+    description: "Cool, composed, and rarely wrong. Calls it “just vibes,” but there’s definitely a hidden spreadsheet doing the heavy lifting.",
     icon: "analytics",
   },
   {
-    id: "arteta",
-    title: "The Tactical Tinkerer",
-    description: "Changes their predicted winner three times before kickoff. Uses phrases like \"positional play\" and \"structure\" to justify last-minute switches.",
-    icon: "precision_manufacturing",
+    id: "deschamps-defender",
+    title: "The Deschamps Defender",
+    subtitle: "The Loyal Traditionalist",
+    description: "Picks the same winner every time—because “experience wins tournaments.” Trusts the system, trusts the veterans, questions nothing.",
+    icon: "shield",
+  },
+  {
+    id: "scaloni-surprise",
+    title: "The Scaloni Surprise",
+    subtitle: "The Low-Key Oracle",
+    description: "Keeps it casual… then lands eerily accurate predictions. Credits “team chemistry,” but it feels borderline prophetic.",
+    icon: "auto_awesome",
+  },
+  {
+    id: "martinez-motivator",
+    title: "The Martínez Motivator",
+    subtitle: "The Believer-in-Chief",
+    description: "Sees a golden generation in every squad. Backs underdogs with conviction—and sticks with them long after reality disagrees.",
+    icon: "star",
+  },
+  {
+    id: "pochettino-almost",
+    title: "The Pochettino Almost",
+    subtitle: "The Nearly Man",
+    description: "Builds the perfect prediction… until the final step. Always one result away from looking like a genius.",
+    icon: "timer",
+  },
+  {
+    id: "la-fuente-developer",
+    title: "The De la Fuente Developer",
+    subtitle: "The Quiet Architect",
+    description: "No hype, no noise—just disciplined, well-built predictions that quietly prove correct over time.",
+    icon: "architecture",
+  },
+  {
+    id: "tuchel-tactician",
+    title: "The Tuchel Tactician",
+    subtitle: "The Detail Analyst",
+    description: "Sees the game in layers. Predicts outcomes through structure, pressing triggers, and scenarios no one else is tracking.",
+    icon: "layers",
   },
 ];

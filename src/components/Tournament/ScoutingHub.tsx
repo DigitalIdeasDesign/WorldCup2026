@@ -16,11 +16,13 @@ import {
   MapPin,
   Clock,
   Users,
-  Info
+  Info,
+  ClipboardList
 } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import { NATIONS_DATA } from '../../constants/nationsData';
 import { SCHEDULE_DATA, Match } from '../../constants/scheduleData';
+import { SQUADS_DATA } from '../../constants/squadsData';
 
 const TEAM_FLAGS: Record<string, string> = {
   'South Africa': 'za',
@@ -36,7 +38,7 @@ const TEAM_FLAGS: Record<string, string> = {
   'Curaçao': 'cw',
   'Ecuador': 'ec',
   'Tunisia': 'tn',
-  'Cape Verde': 'cv',
+  'Cabo Verde': 'cv',
   'Egypt': 'eg',
   'Saudi Arabia': 'sa',
   'New Zealand': 'nz',
@@ -45,13 +47,14 @@ const TEAM_FLAGS: Record<string, string> = {
   'Algeria': 'dz',
   'Austria': 'at',
   'Jordan': 'jo',
-  'DR Congo': 'cd',
+  'Congo DR': 'cd',
   'Ghana': 'gh',
   'Panama': 'pa',
   'Uzbekistan': 'uz',
-  'South Korea': 'kr',
+  'Korea Republic': 'kr',
   'Sweden': 'se',
-  'Ivory Coast': 'ci'
+  'Côte d\'Ivoire': 'ci',
+  'IR Iran': 'ir'
 };
 
 const US_VENUES = [
@@ -191,10 +194,10 @@ const VenueCard = ({ venue }: any) => {
     >
       <div className="flex justify-between items-start mb-3">
         <div>
-          <h4 className="text-white font-headline font-black uppercase tracking-tight group-hover:text-primary transition-colors">{venue.city}</h4>
-          <p className="text-[10px] text-outline-variant font-bold uppercase tracking-widest">{venue.stadium}</p>
+          <h4 className="text-white text-lg font-headline font-black uppercase tracking-tight group-hover:text-primary transition-colors">{venue.city}</h4>
+          <p className="text-[11px] md:text-xs text-outline-variant font-bold uppercase tracking-widest">{venue.stadium}</p>
         </div>
-        <div className="bg-surface-container-highest px-2 py-1 rounded text-[9px] font-bold text-white uppercase">
+        <div className="bg-surface-container-highest px-3 py-1.5 rounded text-[11px] font-bold text-white uppercase">
           {venue.capacity}
         </div>
       </div>
@@ -208,16 +211,16 @@ const VenueCard = ({ venue }: any) => {
             className="space-y-4 pt-4 border-t border-white/5"
           >
             <div>
-              <p className="text-[8px] font-bold text-primary uppercase tracking-widest mb-1">Local Teams</p>
-              <p className="text-[10px] text-on-surface-variant leading-relaxed">{venue.teams}</p>
+              <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Local Teams</p>
+              <p className="text-xs text-on-surface-variant leading-relaxed">{venue.teams}</p>
             </div>
             <div>
-              <p className="text-[8px] font-bold text-secondary uppercase tracking-widest mb-1">Scouting Notes</p>
-              <p className="text-[10px] text-on-surface-variant leading-relaxed italic">"{venue.facts}"</p>
+              <p className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-1">Scouting Notes</p>
+              <p className="text-xs text-on-surface-variant leading-relaxed italic">"{venue.facts}"</p>
             </div>
           </motion.div>
         ) : (
-          <div className="flex items-center gap-1 text-[9px] font-bold text-outline-variant uppercase tracking-widest mt-2 group-hover:text-white transition-colors">
+          <div className="flex items-center gap-1 text-[11px] font-bold text-outline-variant uppercase tracking-widest mt-2 group-hover:text-white transition-colors">
             <Info className="w-3 h-3" /> Tap for details
           </div>
         )}
@@ -232,6 +235,11 @@ const ScoutingHub = () => {
   const [scheduleView, setScheduleView] = useState<'date' | 'stage'>('date');
   const [expandedItems, setExpandedItems] = useState<string[]>(['Jun 11']); // Expand first day by default
 
+  // National Squad Hub states
+  const [squadSearchQuery, setSquadSearchQuery] = useState('');
+  const [squadFilterGroup, setSquadFilterGroup] = useState('all');
+  const [activeSquad, setActiveSquad] = useState<any | null>(null);
+
   const toggleItem = (id: string) => {
     setExpandedItems(prev => 
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
@@ -243,6 +251,32 @@ const ScoutingHub = () => {
     if (TEAM_FLAGS[teamName]) return TEAM_FLAGS[teamName];
     const nation = Object.values(NATIONS_DATA).find(n => n.name.toLowerCase() === teamName.toLowerCase());
     return nation ? nation.code : 'un';
+  };
+
+  const getNationId = (teamName: string): string => {
+    if (teamName === 'TBD') return '';
+    const norm = teamName.toLowerCase().trim();
+    if (norm === 'south korea' || norm === 'korea republic') return 'southkorea';
+    if (norm === 'iran' || norm === 'ir iran') return 'iran';
+    if (norm === 'cape verde' || norm === 'cabo verde') return 'capeverde';
+    if (norm === 'ivory coast' || norm === "côte d'ivoire" || norm === "cote d'ivoire") return 'ivorycoast';
+    if (norm === 'new zealand') return 'newzealand';
+    if (norm === 'saudi arabia') return 'saudiarabia';
+    if (norm === 'south africa') return 'southafrica';
+    if (norm === 'czech republic' || norm === 'czechia') return 'czechia';
+    if (norm === 'dr congo' || norm === 'congo dr') return 'drcongo';
+    if (norm === 'bosnia' || norm === 'bosnia-herzegovina' || norm === 'bosnia and herzegovina') return 'bosnia';
+    if (norm === 'united states' || norm === 'usa' || norm === 'us') return 'usa';
+    if (norm === 'turkey' || norm === 'türkiye') return 'turkey';
+    return norm.replace(/[^a-z0-9]/g, '');
+  };
+
+  const getSquadKey = (name: string): string => {
+    const norm = name.toLowerCase();
+    if (norm === 'south korea') return 'korea republic';
+    if (norm === 'iran' || norm === 'ir iran') return 'ir iran';
+    if (norm === 'cape verde' || norm === 'cabo verde') return 'cabo verde';
+    return norm;
   };
 
   const matchesByDate = SCHEDULE_DATA.reduce((acc, match) => {
@@ -265,7 +299,7 @@ const ScoutingHub = () => {
 
   const tabs = [
     { id: 'matches', label: 'Upcoming Matches', icon: <Calendar className="w-4 h-4" /> },
-    { id: 'contenders', label: 'The Contenders', icon: <Users className="w-4 h-4" /> },
+    { id: 'contenders', label: 'Teams by Ranking', icon: <Users className="w-4 h-4" /> },
     { id: 'info', label: 'Tournament Info', icon: <Info className="w-4 h-4" /> }
   ];
 
@@ -277,28 +311,31 @@ const ScoutingHub = () => {
       exit={{ opacity: 0, y: -20 }}
       className="max-w-7xl mx-auto space-y-12 pb-20 duration-500"
     >
-      <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-          <h1 className="text-5xl font-headline font-black uppercase tracking-tighter text-white">Scouting Hub</h1>
-          <p className="text-on-surface-variant mt-2 text-lg">Your ultimate guide to the 2026 contenders. Analyze stats, scouting reports, and schedules.</p>
+      <header className="mb-10 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+        <div className="space-y-2">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-headline font-black uppercase tracking-tighter text-white">Scouting Hub</h1>
+          <p className="text-on-surface-variant text-sm md:text-base lg:text-lg max-w-2xl">Your ultimate guide to the 2026 contenders. Analyze stats, scouting reports, and schedules.</p>
         </div>
 
         {/* Tab System */}
-        <div className="flex bg-surface-container-highest/50 p-1 rounded-xl border border-white/5 backdrop-blur-sm">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-[11px] font-headline font-black uppercase tracking-widest transition-all ${
-                activeTab === tab.id
-                  ? 'bg-primary text-on-primary shadow-lg'
-                  : 'text-outline-variant hover:text-white'
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
+        <div className="w-full lg:w-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:flex bg-surface-container-highest/40 p-1.5 rounded-2xl border border-white/5 backdrop-blur-sm gap-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                id={`tab-btn-${tab.id}`}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center justify-center lg:justify-start gap-2 px-4 py-3 rounded-xl text-[10px] md:text-xs font-headline font-black uppercase tracking-widest transition-all ${
+                  activeTab === tab.id
+                    ? 'bg-primary text-on-primary shadow-lg shadow-primary/20 scale-[1.02]'
+                    : 'text-outline-variant hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
@@ -316,7 +353,7 @@ const ScoutingHub = () => {
                 <h2 className="text-2xl font-headline font-black uppercase text-white flex items-center gap-3">
                   <Calendar className="text-primary w-6 h-6" /> Tournament Schedule
                 </h2>
-                <p className="text-[10px] text-outline-variant font-bold uppercase tracking-widest">
+                <p className="text-xs md:text-sm text-outline-variant font-bold uppercase tracking-widest">
                   104 Matches • 48 Teams • 3 Nations
                 </p>
               </div>
@@ -328,7 +365,7 @@ const ScoutingHub = () => {
                       setScheduleView('date');
                       setExpandedItems(['Jun 11']);
                     }}
-                    className={`px-4 py-1.5 rounded-lg text-[10px] font-headline font-black uppercase tracking-widest transition-all ${
+                    className={`px-5 py-2 rounded-lg text-xs font-headline font-black uppercase tracking-widest transition-all ${
                       scheduleView === 'date' ? 'bg-primary text-on-primary shadow-lg' : 'text-outline-variant hover:text-white'
                     }`}
                   >
@@ -339,7 +376,7 @@ const ScoutingHub = () => {
                       setScheduleView('stage');
                       setExpandedItems(['Group Stage']);
                     }}
-                    className={`px-4 py-1.5 rounded-lg text-[10px] font-headline font-black uppercase tracking-widest transition-all ${
+                    className={`px-5 py-2 rounded-lg text-xs font-headline font-black uppercase tracking-widest transition-all ${
                       scheduleView === 'stage' ? 'bg-primary text-on-primary shadow-lg' : 'text-outline-variant hover:text-white'
                     }`}
                   >
@@ -363,8 +400,8 @@ const ScoutingHub = () => {
                         {scheduleView === 'date' ? <Clock className="w-5 h-5" /> : <Target className="w-5 h-5" />}
                       </div>
                       <div className="text-left">
-                        <h3 className="text-white font-headline font-black uppercase tracking-tight">{groupKey}</h3>
-                        <p className="text-[10px] text-outline-variant font-bold uppercase tracking-widest">
+                        <h3 className="text-white text-lg font-headline font-black uppercase tracking-tight">{groupKey}</h3>
+                        <p className="text-[11px] text-outline-variant font-bold uppercase tracking-widest">
                           {matches.length} {matches.length === 1 ? 'Match' : 'Matches'}
                         </p>
                       </div>
@@ -380,24 +417,27 @@ const ScoutingHub = () => {
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        className="border-t border-white/5"
+                        className="border-t border-white/5 backdrop-blur-sm bg-black/10"
                       >
-                        <div className="p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                           {matches.map((m, i) => (
-                            <div key={i} className="bg-surface-container-highest/30 border border-white/5 rounded-xl p-4 hover:border-white/20 transition-all group/match">
+                            <div key={i} className="bg-surface-container-highest/20 hover:bg-surface-container-highest/40 border border-white/5 hover:border-primary/20 rounded-xl p-5 transition-all group/match flex flex-col justify-between shadow-sm">
                               <div className="flex justify-between items-start mb-4">
                                 <div className="flex flex-col">
-                                  <span className="text-[9px] font-bold text-primary uppercase tracking-widest">{m.date}</span>
-                                  <span className="text-[10px] text-outline-variant font-medium uppercase">{m.time}</span>
+                                  <span className="text-[11px] font-bold text-primary uppercase tracking-widest">{m.date}</span>
+                                  <span className="text-[11px] text-outline-variant font-medium uppercase">{m.time}</span>
                                 </div>
-                                <div className="bg-surface-container-highest px-2 py-0.5 rounded text-[8px] font-bold text-white uppercase">
+                                <div className="bg-surface-container-highest px-2 py-1 rounded text-[10px] font-bold text-white uppercase">
                                   {m.stage === 'Group Stage' ? `Group ${m.group}` : m.stage}
                                 </div>
                               </div>
 
                               <div className="flex items-center justify-between gap-4 mb-4">
-                                <div className="flex-1 flex flex-col items-center gap-2">
-                                  <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden border border-white/10">
+                                <Link 
+                                  to={`/scouting-hub/nations/${getNationId(m.homeTeam)}`}
+                                  className="flex-1 flex flex-col items-center gap-2 cursor-pointer group/flag hover:opacity-85 transition-opacity overflow-hidden"
+                                >
+                                  <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden border border-white/10 group-hover/flag:border-primary/50 transition-colors">
                                     <img 
                                       src={`https://flagcdn.com/w80/${getFlagCode(m.homeTeam)}.png`} 
                                       alt="" 
@@ -405,13 +445,16 @@ const ScoutingHub = () => {
                                       referrerPolicy="no-referrer"
                                     />
                                   </div>
-                                  <span className="text-[10px] font-headline font-black text-white uppercase text-center truncate w-full">{m.homeTeam}</span>
-                                </div>
+                                  <span className="text-xs font-headline font-black text-white uppercase text-center truncate w-full group-hover/flag:text-primary transition-colors">{m.homeTeam}</span>
+                                </Link>
                                 
-                                <div className="text-[10px] font-black text-outline-variant uppercase">VS</div>
+                                <div className="text-xs font-black text-outline-variant uppercase">VS</div>
 
-                                <div className="flex-1 flex flex-col items-center gap-2">
-                                  <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden border border-white/10">
+                                <Link 
+                                  to={`/scouting-hub/nations/${getNationId(m.awayTeam)}`}
+                                  className="flex-1 flex flex-col items-center gap-2 cursor-pointer group/flag hover:opacity-85 transition-opacity overflow-hidden"
+                                >
+                                  <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden border border-white/10 group-hover/flag:border-primary/50 transition-colors">
                                     <img 
                                       src={`https://flagcdn.com/w80/${getFlagCode(m.awayTeam)}.png`} 
                                       alt="" 
@@ -419,13 +462,18 @@ const ScoutingHub = () => {
                                       referrerPolicy="no-referrer"
                                     />
                                   </div>
-                                  <span className="text-[10px] font-headline font-black text-white uppercase text-center truncate w-full">{m.awayTeam}</span>
-                                </div>
+                                  <span className="text-xs font-headline font-black text-white uppercase text-center truncate w-full group-hover/flag:text-primary transition-colors">{m.awayTeam}</span>
+                                </Link>
                               </div>
 
-                              <button className="w-full py-2 rounded-lg bg-white/5 text-[9px] font-bold text-outline-variant uppercase tracking-widest hover:bg-primary hover:text-on-primary transition-all">
+                              <a 
+                                href={m.matchLink || "#"} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="w-full py-3 rounded-lg bg-white/5 text-[10px] md:text-xs font-bold text-outline-variant uppercase tracking-widest hover:bg-primary hover:text-on-primary transition-all block text-center"
+                              >
                                 Match Details
-                              </button>
+                              </a>
                             </div>
                           ))}
                         </div>
@@ -449,26 +497,49 @@ const ScoutingHub = () => {
           >
             <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-8">
               <div className="space-y-2">
-                <h2 className="text-3xl font-headline font-black uppercase text-white tracking-tight">The Contenders</h2>
+                <h2 className="text-3xl font-headline font-black uppercase text-white tracking-tight">Teams by Ranking</h2>
                 <p className="text-xs text-outline-variant font-medium max-w-md">
                   Browse the 48 nations competing in the 2026 finals. Groups with fewer than 4 teams represent pending qualifiers.
                 </p>
               </div>
               
-              <div className="flex flex-wrap gap-2 max-w-2xl">
-                {['all', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'].map(g => (
-                  <button
-                    key={g}
-                    onClick={() => setFilter(g)}
-                    className={`px-4 py-2 rounded-lg text-[10px] font-headline font-black uppercase tracking-widest transition-all border ${
-                      filter === g 
-                        ? 'bg-primary text-on-primary border-primary shadow-[0_0_20px_rgba(var(--color-primary),0.3)]' 
-                        : 'bg-surface-container-highest/30 text-outline-variant hover:text-white border-white/5 hover:border-white/20'
-                    }`}
+              <div className="w-full lg:w-auto">
+                {/* Mobile & Tablet Filter Dropdown */}
+                <div className="block lg:hidden w-full relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
+                    <Filter className="w-4 h-4 text-primary animate-pulse" />
+                  </div>
+                  <select
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                    className="w-full bg-surface-container-highest/50 border border-white/10 rounded-xl pl-11 pr-10 py-3.5 text-xs font-headline font-black uppercase tracking-widest text-white tracking-wider focus:outline-none focus:border-primary/55 appearance-none cursor-pointer"
                   >
-                    {g === 'all' ? 'All Teams' : `Group ${g}`}
-                  </button>
-                ))}
+                    <option value="all" className="bg-surface-container-highest text-white">All Teams</option>
+                    {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'].map(g => (
+                      <option key={g} value={g} className="bg-surface-container-highest text-white">Group {g}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-outline-variant flex items-center">
+                    <ChevronRight className="w-4 h-4 rotate-90" />
+                  </div>
+                </div>
+
+                {/* Desktop Filter Chips */}
+                <div className="hidden lg:flex flex-wrap gap-2 max-w-2xl">
+                  {['all', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'].map(g => (
+                    <button
+                      key={g}
+                      onClick={() => setFilter(g)}
+                      className={`px-4 py-2.5 rounded-xl text-[10px] font-headline font-black uppercase tracking-widest transition-all border whitespace-nowrap ${
+                        filter === g 
+                          ? 'bg-primary text-on-primary border-primary shadow-[0_0_20px_rgba(var(--color-primary),0.3)] scale-105' 
+                          : 'bg-surface-container-highest/30 text-outline-variant hover:text-white border-white/5 hover:border-white/20'
+                      }`}
+                    >
+                      {g === 'all' ? 'All Teams' : `Group ${g}`}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -504,15 +575,15 @@ const ScoutingHub = () => {
 
                     <div className="grid grid-cols-3 gap-2">
                       <div className="text-center">
-                        <p className="text-[8px] font-bold text-outline-variant uppercase tracking-widest mb-1">Scoring</p>
+                        <p className="text-[10px] font-bold text-outline-variant uppercase tracking-widest mb-1">Scoring</p>
                         <p className="text-sm font-headline font-black text-white">{nation.scoringPower}</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-[8px] font-bold text-outline-variant uppercase tracking-widest mb-1">Defense</p>
+                        <p className="text-[10px] font-bold text-outline-variant uppercase tracking-widest mb-1">Defense</p>
                         <p className="text-sm font-headline font-black text-white">{nation.theWall}</p>
                       </div>
                       <div className="text-center">
-                        <p className="text-[8px] font-bold text-outline-variant uppercase tracking-widest mb-1">Control</p>
+                        <p className="text-[10px] font-bold text-outline-variant uppercase tracking-widest mb-1">Control</p>
                         <p className="text-sm font-headline font-black text-white">{nation.control}</p>
                       </div>
                     </div>
@@ -616,6 +687,50 @@ const ScoutingHub = () => {
               </div>
             </div>
 
+            {/* Media & Resources Section */}
+            <div className="space-y-8">
+              <div className="flex items-center gap-4">
+                <h3 className="text-lg font-headline font-black uppercase text-white flex items-center gap-2">
+                  <Activity className="text-secondary w-5 h-5" /> Media & Resources
+                </h3>
+                <div className="h-px flex-1 bg-white/5" />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="glass-card border border-white/10 p-6 rounded-2xl">
+                  <h4 className="text-white font-headline font-black uppercase tracking-tight text-sm mb-4">Official Socials</h4>
+                  <div className="space-y-3">
+                    <a href="https://www.instagram.com/reel/C28bsLRLHKl/" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between group">
+                      <span className="text-[11px] font-bold text-outline-variant uppercase group-hover:text-primary transition-colors">Instagram Highlight #1</span>
+                      <ChevronRight className="w-4 h-4 text-outline-variant group-hover:text-primary" />
+                    </a>
+                    <a href="https://www.instagram.com/reel/C28P3q_LkGE/" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between group">
+                      <span className="text-[11px] font-bold text-outline-variant uppercase group-hover:text-primary transition-colors">Instagram Highlight #2</span>
+                      <ChevronRight className="w-4 h-4 text-outline-variant group-hover:text-primary" />
+                    </a>
+                    <a href="https://www.instagram.com/reel/C28UBSXreQy/" target="_blank" rel="noopener noreferrer" className="flex items-center justify-between group">
+                      <span className="text-[11px] font-bold text-outline-variant uppercase group-hover:text-primary transition-colors">Instagram Highlight #3</span>
+                      <ChevronRight className="w-4 h-4 text-outline-variant group-hover:text-primary" />
+                    </a>
+                  </div>
+                </div>
+
+                <div className="glass-card border border-white/10 p-6 rounded-2xl">
+                  <h4 className="text-white font-headline font-black uppercase tracking-tight text-sm mb-4">Quick Links</h4>
+                  <div className="space-y-4">
+                    <a href="https://www.fifa.com/en/tournaments/mens/worldcup/canadamexicousa2026/articles/world-cup-2026-who-has-qualified" target="_blank" rel="noopener noreferrer" className="block p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                      <p className="text-[11px] font-black text-secondary uppercase leading-tight mb-1">Qualifiers Hub</p>
+                      <p className="text-[10px] text-outline-variant uppercase tracking-widest">Learn how each team qualified</p>
+                    </a>
+                    <a href="https://store.fifa.com/?intcmp=%28p_fifacom%29_%28d_fifastore%29_%28c_webheader-main%29_%28sc_shop%29_%28ssc_fifastore%29_%28sssc_%29_%28l_en%29_%28da_27112023%29" target="_blank" rel="noopener noreferrer" className="block p-3 rounded-lg bg-white/5 hover:bg-white/10 transition-colors">
+                      <p className="text-[11px] font-black text-primary uppercase leading-tight mb-1">Official Gear</p>
+                      <p className="text-[10px] text-outline-variant uppercase tracking-widest">Shop the 2026 collection</p>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Venue Explorer */}
             <div className="space-y-12">
               <div className="flex flex-col gap-2">
@@ -693,6 +808,365 @@ const ScoutingHub = () => {
             </div>
           </motion.section>
         )}
+
+        {activeTab === 'squads' && (() => {
+          const ALL_48_NATIONS = [
+            { name: "Algeria", code: "dz", group: "J" },
+            { name: "Argentina", code: "ar", group: "J" },
+            { name: "Australia", code: "au", group: "D" },
+            { name: "Austria", code: "at", group: "J" },
+            { name: "Belgium", code: "be", group: "G" },
+            { name: "Bosnia and Herzegovina", code: "ba", group: "B" },
+            { name: "Brazil", code: "br", group: "C" },
+            { name: "Cabo Verde", code: "cv", group: "H" },
+            { name: "Canada", code: "ca", group: "B" },
+            { name: "Colombia", code: "co", group: "K" },
+            { name: "Congo DR", code: "cd", group: "K" },
+            { name: "Côte d'Ivoire", code: "ci", group: "E" },
+            { name: "Croatia", code: "hr", group: "L" },
+            { name: "Curaçao", code: "cw", group: "E" },
+            { name: "Czechia", code: "cz", group: "A" },
+            { name: "Ecuador", code: "ec", group: "E" },
+            { name: "Egypt", code: "eg", group: "G" },
+            { name: "England", code: "gb-eng", group: "L" },
+            { name: "France", code: "fr", group: "I" },
+            { name: "Germany", code: "de", group: "E" },
+            { name: "Ghana", code: "gh", group: "L" },
+            { name: "Haiti", code: "ht", group: "C" },
+            { name: "IR Iran", code: "ir", group: "G" },
+            { name: "Iraq", code: "iq", group: "I" },
+            { name: "Japan", code: "jp", group: "F" },
+            { name: "Jordan", code: "jo", group: "J" },
+            { name: "Korea Republic", code: "kr", group: "A" },
+            { name: "Mexico", code: "mx", group: "A" },
+            { name: "Morocco", code: "ma", group: "C" },
+            { name: "Netherlands", code: "nl", group: "F" },
+            { name: "New Zealand", code: "nz", group: "G" },
+            { name: "Norway", code: "no", group: "I" },
+            { name: "Panama", code: "pa", group: "L" },
+            { name: "Paraguay", code: "py", group: "D" },
+            { name: "Portugal", code: "pt", group: "K" },
+            { name: "Qatar", code: "qa", group: "B" },
+            { name: "Saudi Arabia", code: "sa", group: "H" },
+            { name: "Scotland", code: "gb-sct", group: "C" },
+            { name: "Senegal", code: "sn", group: "I" },
+            { name: "South Africa", code: "za", group: "A" },
+            { name: "Spain", code: "es", group: "H" },
+            { name: "Sweden", code: "se", group: "F" },
+            { name: "Switzerland", code: "ch", group: "B" },
+            { name: "Tunisia", code: "tn", group: "F" },
+            { name: "Türkiye", code: "tr", group: "D" },
+            { name: "Uruguay", code: "uy", group: "H" },
+            { name: "USA", code: "us", group: "D" },
+            { name: "Uzbekistan", code: "uz", group: "K" }
+          ];
+
+          const filteredSquadNations = ALL_48_NATIONS.filter(nation => {
+            const matchesGroup = squadFilterGroup === 'all' || nation.group === squadFilterGroup;
+            const cleanQuery = squadSearchQuery.toLowerCase().trim();
+            if (!cleanQuery) return matchesGroup;
+
+            const matchesName = nation.name.toLowerCase().includes(cleanQuery);
+            
+            const squadDetail = SQUADS_DATA[getSquadKey(nation.name)];
+            const matchesPlayers = squadDetail?.players.some(p => 
+              p.name.toLowerCase().includes(cleanQuery) || 
+              p.club.toLowerCase().includes(cleanQuery)
+            );
+            const matchesCoach = squadDetail?.coach.toLowerCase().includes(cleanQuery);
+
+            return matchesGroup && (matchesName || matchesPlayers || matchesCoach);
+          });
+
+          return (
+            <motion.section 
+              key="squads-tab"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="space-y-8"
+            >
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 bg-surface-container-highest/30 p-6 rounded-2xl border border-white/5 backdrop-blur-sm">
+                <div className="space-y-1">
+                  <h2 className="text-3xl font-headline font-black uppercase text-white tracking-tight flex items-center gap-3">
+                    <ClipboardList className="text-primary w-8 h-8 animate-pulse" /> National Squad Hub
+                  </h2>
+                  <p className="text-xs text-outline-variant font-bold uppercase tracking-wider">
+                    Complete reference and tactical sheets for all 48 tournament contenders.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+                  <div className="relative w-full sm:w-80">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-outline-variant" />
+                    <input
+                      type="text"
+                      value={squadSearchQuery}
+                      onChange={(e) => setSquadSearchQuery(e.target.value)}
+                      placeholder="Search country, players, or clubs..."
+                      className="w-full pl-11 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl text-xs text-white placeholder:text-outline-variant focus:border-primary/50 focus:outline-none transition-colors font-bold uppercase tracking-wide"
+                    />
+                    {squadSearchQuery && (
+                      <button
+                        onClick={() => setSquadSearchQuery('')}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-black text-primary uppercase hover:underline"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex bg-black/40 border border-white/10 rounded-xl p-1 overflow-x-auto no-scrollbar max-w-full">
+                    <select 
+                      value={squadFilterGroup}
+                      onChange={(e) => setSquadFilterGroup(e.target.value)}
+                      className="bg-transparent border-none text-[10px] font-bold text-white px-3 py-1.5 uppercase focus:outline-none cursor-pointer tracking-wider"
+                    >
+                      <option value="all" className="bg-surface-container-highest text-white">All Groups</option>
+                      {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'].map(g => (
+                        <option key={g} value={g} className="bg-surface-container-highest text-white">Group {g}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {filteredSquadNations.length === 0 ? (
+                <div className="glass-card border border-dashed border-white/10 p-12 text-center rounded-2xl">
+                  <Search className="w-12 h-12 text-outline-variant mx-auto mb-4 opacity-50" />
+                  <h3 className="text-xl font-headline font-black text-white uppercase mb-2">No Roster sheets Found</h3>
+                  <p className="text-xs text-outline-variant font-bold uppercase tracking-wider">We couldn't find any team or players matching "{squadSearchQuery}".</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                  {filteredSquadNations.map((nation) => {
+                    const hasRoster = !!SQUADS_DATA[getSquadKey(nation.name)];
+                    return (
+                      <motion.div
+                        whileHover={{ scale: 1.03, y: -2 }}
+                        whileTap={{ scale: 0.98 }}
+                        key={nation.name}
+                        onClick={() => setActiveSquad(SQUADS_DATA[getSquadKey(nation.name)] || { country: nation.name, coach: "TBD", players: [] })}
+                        className="group relative bg-surface-container-highest/20 border border-white/5 rounded-xl block p-4 hover:border-primary/40 hover:bg-surface-container-highest/30 transition-all cursor-pointer overflow-hidden shadow-sm"
+                      >
+                        <div className="absolute right-0 top-0 w-24 h-24 -mr-6 -mt-6 opacity-10 group-hover:opacity-25 group-hover:scale-125 transition-all">
+                          <img 
+                            src={`https://flagcdn.com/w160/${nation.code}.png`} 
+                            alt="" 
+                            className="w-full h-full object-cover rounded-full"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+
+                        <span className="text-[9px] font-black text-secondary bg-secondary/15 px-2 py-0.5 rounded uppercase tracking-wider mb-2 inline-block">
+                          Group {nation.group}
+                        </span>
+                        
+                        <div className="flex items-center gap-2 mt-1">
+                          <img 
+                            src={`https://flagcdn.com/w40/${nation.code}.png`} 
+                            alt="" 
+                            className="w-5 h-3.5 object-cover rounded shadow-sm border border-white/10"
+                            referrerPolicy="no-referrer"
+                          />
+                          <h3 className="text-xs font-headline font-black text-white uppercase tracking-tight truncate group-hover:text-primary transition-colors">
+                            {nation.name}
+                          </h3>
+                        </div>
+
+                        <p className="text-[10px] text-outline-variant font-bold uppercase tracking-wider mt-2.5">
+                          {hasRoster ? `${SQUADS_DATA[getSquadKey(nation.name)].players.length} Key Players` : 'Roster pending'}
+                        </p>
+
+                        <div className="text-[10px] font-black text-primary group-hover:underline mt-4 flex items-center gap-1 uppercase tracking-widest">
+                          View Sheet <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </motion.section>
+          );
+        })()}
+      </AnimatePresence>
+
+      {/* Interactive Squad Overlay Modal */}
+      <AnimatePresence>
+        {activeSquad && (() => {
+          const ALL_48_NATIONS_MODAL = [
+            { name: "Algeria", code: "dz", group: "J" },
+            { name: "Argentina", code: "ar", group: "J" },
+            { name: "Australia", code: "au", group: "D" },
+            { name: "Austria", code: "at", group: "J" },
+            { name: "Belgium", code: "be", group: "G" },
+            { name: "Bosnia and Herzegovina", code: "ba", group: "B" },
+            { name: "Brazil", code: "br", group: "C" },
+            { name: "Cabo Verde", code: "cv", group: "H" },
+            { name: "Canada", code: "ca", group: "B" },
+            { name: "Colombia", code: "co", group: "K" },
+            { name: "Congo DR", code: "cd", group: "K" },
+            { name: "Côte d'Ivoire", code: "ci", group: "E" },
+            { name: "Croatia", code: "hr", group: "L" },
+            { name: "Curaçao", code: "cw", group: "E" },
+            { name: "Czechia", code: "cz", group: "A" },
+            { name: "Ecuador", code: "ec", group: "E" },
+            { name: "Egypt", code: "eg", group: "G" },
+            { name: "England", code: "gb-eng", group: "L" },
+            { name: "France", code: "fr", group: "I" },
+            { name: "Germany", code: "de", group: "E" },
+            { name: "Ghana", code: "gh", group: "L" },
+            { name: "Haiti", code: "ht", group: "C" },
+            { name: "IR Iran", code: "ir", group: "G" },
+            { name: "Iraq", code: "iq", group: "I" },
+            { name: "Japan", code: "jp", group: "F" },
+            { name: "Jordan", code: "jo", group: "J" },
+            { name: "Korea Republic", code: "kr", group: "A" },
+            { name: "Mexico", code: "mx", group: "A" },
+            { name: "Morocco", code: "ma", group: "C" },
+            { name: "Netherlands", code: "nl", group: "F" },
+            { name: "New Zealand", code: "nz", group: "G" },
+            { name: "Norway", code: "no", group: "I" },
+            { name: "Panama", code: "pa", group: "L" },
+            { name: "Paraguay", code: "py", group: "D" },
+            { name: "Portugal", code: "pt", group: "K" },
+            { name: "Qatar", code: "qa", group: "B" },
+            { name: "Saudi Arabia", code: "sa", group: "H" },
+            { name: "Scotland", code: "gb-sct", group: "C" },
+            { name: "Senegal", code: "sn", group: "I" },
+            { name: "South Africa", code: "za", group: "A" },
+            { name: "Spain", code: "es", group: "H" },
+            { name: "Sweden", code: "se", group: "F" },
+            { name: "Switzerland", code: "ch", group: "B" },
+            { name: "Tunisia", code: "tn", group: "F" },
+            { name: "Türkiye", code: "tr", group: "D" },
+            { name: "Uruguay", code: "uy", group: "H" },
+            { name: "USA", code: "us", group: "D" },
+            { name: "Uzbekistan", code: "uz", group: "K" }
+          ];
+          const currentNation = ALL_48_NATIONS_MODAL.find(n => n.name.toLowerCase() === activeSquad.country.toLowerCase()) || { code: 'un', group: '—' };
+          
+          return (
+            <div 
+              onClick={() => setActiveSquad(null)}
+              className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 30 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 30 }}
+                onClick={(e) => e.stopPropagation()}
+                className="bg-surface-container-highest border border-white/10 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden relative shadow-2xl flex flex-col"
+              >
+                {/* Banner / Header */}
+                <div className="relative bg-black/60 p-6 md:p-8 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-11 bg-black/40 rounded overflow-hidden border border-white/10 shadow-lg">
+                      <img 
+                        src={`https://flagcdn.com/w160/${currentNation.code}.png`} 
+                        alt="" 
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl md:text-3xl font-headline font-black text-white uppercase tracking-tight">{activeSquad.country}</h3>
+                      <p className="text-xs text-primary font-bold uppercase tracking-widest mt-1 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" /> Official Squad Sheet Group {currentNation.group}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="sm:text-right">
+                    <span className="text-[10px] text-outline-variant font-bold uppercase tracking-wider block">Head Coach</span>
+                    <span className="text-sm font-headline font-black text-white uppercase">{activeSquad.coach}</span>
+                  </div>
+                </div>
+
+                {/* Player list sheet */}
+                <div className="p-6 md:p-8 flex-1 overflow-y-auto space-y-6 scrollbar-thin">
+                  {activeSquad.players && activeSquad.players.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Goalkeepers */}
+                      <div className="space-y-2 col-span-1 sm:col-span-2 border-b border-white/5 pb-4">
+                        <h4 className="text-[10px] font-bold text-secondary uppercase tracking-widest">
+                          Goalkeepers
+                        </h4>
+                        <div className="grid grid-cols-1 gap-2">
+                          {activeSquad.players.filter((p: any) => p.pos === 'GK').map((player: any, idx: number) => (
+                            <div key={idx} className="flex justify-between items-center bg-white/5 p-3 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
+                              <span className="text-xs font-black text-white uppercase">{player.name}</span>
+                              <span className="text-[10px] font-bold text-outline-variant uppercase bg-surface-container-highest px-3 py-1.5 rounded tracking-wide">{player.club}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Defenders */}
+                      <div className="space-y-2 col-span-1 sm:col-span-2 border-b border-white/5 pb-4">
+                        <h4 className="text-[10px] font-bold text-secondary uppercase tracking-widest">
+                          Defenders
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {activeSquad.players.filter((p: any) => p.pos === 'DF').map((player: any, idx: number) => (
+                            <div key={idx} className="flex justify-between items-center bg-white/5 p-3 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
+                              <span className="text-xs font-black text-white uppercase truncate max-w-[155px]">{player.name}</span>
+                              <span className="text-[10px] font-bold text-outline-variant uppercase bg-surface-container-highest px-3 py-1.5 rounded tracking-wide truncate max-w-[130px]">{player.club}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Midfielders */}
+                      <div className="space-y-2 col-span-1 sm:col-span-2 border-b border-white/5 pb-4">
+                        <h4 className="text-[10px] font-bold text-secondary uppercase tracking-widest">
+                          Midfielders
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {activeSquad.players.filter((p: any) => p.pos === 'MF').map((player: any, idx: number) => (
+                            <div key={idx} className="flex justify-between items-center bg-white/5 p-3 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
+                              <span className="text-xs font-black text-white uppercase truncate max-w-[155px]">{player.name}</span>
+                              <span className="text-[10px] font-bold text-outline-variant uppercase bg-surface-container-highest px-3 py-1.5 rounded tracking-wide truncate max-w-[130px]">{player.club}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Forwards */}
+                      <div className="space-y-2 col-span-1 sm:col-span-2">
+                        <h4 className="text-[10px] font-bold text-secondary uppercase tracking-widest">
+                          Forwards
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {activeSquad.players.filter((p: any) => p.pos === 'FW').map((player: any, idx: number) => (
+                            <div key={idx} className="flex justify-between items-center bg-white/5 p-3 rounded-lg border border-white/5 hover:border-white/10 transition-colors">
+                              <span className="text-xs font-black text-white uppercase truncate max-w-[155px]">{player.name}</span>
+                              <span className="text-[10px] font-bold text-outline-variant uppercase bg-surface-container-highest px-3 py-1.5 rounded tracking-wide truncate max-w-[130px]">{player.club}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <p className="text-xs text-outline-variant font-bold uppercase">Official roster sheet is awaiting final submission.</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Close controls */}
+                <div className="bg-black/40 p-4 border-t border-white/5 flex justify-end gap-2">
+                  <button
+                    onClick={() => setActiveSquad(null)}
+                    className="px-6 py-2.5 rounded-xl bg-primary text-on-primary font-headline font-black uppercase text-xs tracking-wider hover:opacity-90 transition-opacity"
+                  >
+                    Close Sheet
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
     </motion.div>
   );

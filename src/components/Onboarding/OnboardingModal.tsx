@@ -121,14 +121,14 @@ export default function OnboardingModal({ isOpen, onClose, onComplete }: Onboard
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-2xl bg-surface-container-low border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+            className="relative w-full max-w-2xl max-h-[calc(100dvh-32px)] sm:max-h-[calc(100vh-64px)] bg-surface-container-low border border-white/10 rounded-3xl shadow-2xl overflow-hidden flex flex-col"
           >
             {/* Progress Bar */}
-            <div className="absolute top-0 left-0 right-0 flex gap-1 p-2 z-10">
+            <div className="absolute top-0 left-0 right-0 flex gap-1 p-2 sm:p-2.5 z-10">
               {screens.map((_, i) => (
                 <div 
                   key={i} 
-                  className="h-1 flex-1 bg-white/10 rounded-full overflow-hidden"
+                  className="h-1.5 sm:h-1 flex-1 bg-white/10 rounded-full overflow-hidden"
                 >
                   <motion.div 
                     initial={false}
@@ -151,7 +151,7 @@ export default function OnboardingModal({ isOpen, onClose, onComplete }: Onboard
             </button>
 
             {/* Content Area */}
-            <div className="flex-1 p-8 sm:p-12 flex flex-col items-center text-center">
+            <div className="flex-1 min-h-0 p-6 sm:p-12 flex flex-col items-center text-center overflow-y-auto">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={currentStep}
@@ -161,58 +161,63 @@ export default function OnboardingModal({ isOpen, onClose, onComplete }: Onboard
                   transition={{ duration: 0.3 }}
                   className="flex flex-col items-center"
                 >
-                  <div className={`mb-8 p-6 rounded-3xl bg-surface-container-highest/50 border border-white/5 shadow-inner`}>
-                    {currentScreen.icon}
+                  <div className={`mb-6 sm:mb-8 p-4 sm:p-6 rounded-3xl bg-surface-container-highest/50 border border-white/5 shadow-inner`}>
+                    {React.cloneElement(currentScreen.icon as React.ReactElement, { 
+                      className: 'w-12 h-12 sm:w-16 sm:h-16 text-' + currentScreen.color
+                    })}
                   </div>
                   
                   <div className="space-y-4 max-w-md">
                     <div>
-                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary mb-2 block">
+                      <span className="text-xs font-black uppercase tracking-[0.3em] text-primary mb-3 block">
                         {currentScreen.subtitle}
                       </span>
-                      <h2 className="text-3xl sm:text-4xl font-headline font-black uppercase text-white tracking-tighter leading-none">
+                      <h2 className="text-3xl sm:text-5xl font-headline font-black uppercase text-white tracking-tighter leading-none">
                         {currentScreen.title}
                       </h2>
                     </div>
                     
-                    <p className="text-on-surface-variant text-base sm:text-lg leading-relaxed font-medium">
+                    <p className="text-on-surface-variant text-base sm:text-xl leading-relaxed font-medium px-4">
                       {currentScreen.content}
                     </p>
 
                     {currentScreen.id === 'ready' && (
-                      <div className="mt-8 w-full max-w-sm space-y-3">
-                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-outline-variant block mb-4">
-                          Choose Your Managerial Identity
+                      <div className="mt-8 w-full space-y-4 pb-8">
+                        <label className="text-xs md:text-sm font-black uppercase tracking-[0.2em] text-outline-variant block mb-6">
+                           Choose Your Managerial Identity
                         </label>
-                        <div className="grid grid-cols-1 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           {NOMINATIONS.map((nom) => (
                             <button
                               key={nom.id}
                               onClick={() => setSelectedNomination(nom.id)}
-                              className={`flex items-start gap-4 p-4 rounded-2xl border transition-all text-left group ${
+                              className={`flex flex-col sm:flex-row items-center sm:items-start gap-5 p-6 rounded-2xl border transition-all text-center sm:text-left group relative ${
                                 selectedNomination === nom.id
                                   ? 'bg-primary/10 border-primary shadow-lg shadow-primary/5'
                                   : 'bg-surface-container-highest/20 border-white/5 hover:border-white/10'
                               }`}
                             >
-                              <div className={`mt-0.5 p-2 rounded-lg transition-colors ${
+                              <div className={`p-3 rounded-xl transition-colors ${
                                 selectedNomination === nom.id ? 'bg-primary text-on-primary' : 'bg-surface-container-highest text-outline-variant group-hover:text-white'
                               }`}>
-                                <span className="material-symbols-outlined text-xl">{nom.icon}</span>
+                                <span className="material-symbols-outlined text-2xl">{nom.icon}</span>
                               </div>
                               <div className="flex-1">
-                                <div className={`text-sm font-headline font-black uppercase tracking-tight ${
+                                <div className={`text-base md:text-lg font-headline font-black uppercase tracking-tight ${
                                   selectedNomination === nom.id ? 'text-primary' : 'text-white'
                                 }`}>
                                   {nom.title}
                                 </div>
-                                <div className="text-[10px] text-on-surface-variant leading-relaxed font-medium mt-1">
+                                <div className="text-[10px] md:text-xs font-black text-secondary uppercase tracking-widest mt-1">
+                                  {nom.subtitle}
+                                </div>
+                                <div className="text-xs md:text-sm text-on-surface-variant leading-relaxed font-medium mt-3">
                                   {nom.description}
                                 </div>
                               </div>
                               {selectedNomination === nom.id && (
-                                <motion.div layoutId="check" className="mt-1">
-                                  <CheckCircle2 size={16} className="text-primary" />
+                                <motion.div layoutId="check" className="absolute top-4 right-4 sm:static mt-1">
+                                  <CheckCircle2 size={20} className="text-primary" />
                                 </motion.div>
                               )}
                             </button>
@@ -226,35 +231,35 @@ export default function OnboardingModal({ isOpen, onClose, onComplete }: Onboard
             </div>
 
             {/* Footer Navigation */}
-            <div className="p-8 bg-surface-container-lowest/50 border-t border-white/5 flex items-center justify-between">
+            <div className="p-6 sm:p-10 bg-surface-container-lowest/50 border-t border-white/5 flex items-center justify-between">
               <button
                 onClick={handleBack}
                 disabled={currentStep === 0}
-                className={`flex items-center gap-2 text-sm font-bold uppercase tracking-widest transition-all ${
+                className={`flex items-center gap-3 text-xs sm:text-base font-bold uppercase tracking-widest transition-all ${
                   currentStep === 0 ? 'opacity-0 pointer-events-none' : 'text-outline-variant hover:text-white'
                 }`}
               >
-                <ChevronLeft size={18} /> Back
+                <ChevronLeft size={20} className="sm:w-6 sm:h-6" /> Back
               </button>
 
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 sm:gap-6">
                 {currentStep < screens.length - 1 && (
                   <button 
                     onClick={onClose}
-                    className="text-xs font-bold text-outline-variant uppercase tracking-widest hover:text-white transition-colors"
+                    className="text-xs sm:text-sm font-bold text-outline-variant uppercase tracking-widest hover:text-white transition-colors"
                   >
-                    Skip Briefing
+                    Skip
                   </button>
                 )}
                 
                 <button
                   onClick={handleNext}
-                  className="flex items-center gap-2 bg-primary text-on-primary px-8 py-3 rounded-xl font-headline font-black uppercase tracking-widest shadow-lg hover:shadow-primary/20 hover:scale-105 transition-all active:scale-95"
+                  className="flex items-center gap-3 bg-primary text-on-primary px-6 sm:px-12 py-3 sm:py-5 rounded-2xl font-headline font-black uppercase tracking-widest shadow-lg hover:shadow-primary/20 hover:scale-105 transition-all active:scale-95 text-sm sm:text-lg"
                 >
                   {currentStep === screens.length - 1 ? (
-                    <>Get Started <ArrowRight size={18} /></>
+                    <><span className="hidden sm:inline">Get Started</span><span className="sm:hidden">Start</span> <ArrowRight size={20} className="sm:w-6 sm:h-6" /></>
                   ) : (
-                    <>Next <ChevronRight size={18} /></>
+                    <><span className="hidden sm:inline">Next Step</span> <ChevronRight size={20} className="sm:w-6 sm:h-6" /></>
                   )}
                 </button>
               </div>

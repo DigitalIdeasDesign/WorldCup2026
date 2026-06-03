@@ -12,6 +12,7 @@ import { Trophy, LogOut, User as UserIcon, Settings, Menu, X, Loader2 } from 'lu
 import { motion, AnimatePresence } from 'motion/react';
 
 import { auth, db, handleFirestoreError, OperationType } from './firebase';
+import { SoundProvider } from './context/SoundContext';
 
 // Lazy load components
 const Login = lazy(() => import('./components/Auth/Login'));
@@ -138,7 +139,8 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <Router>
+      <SoundProvider>
+        <Router>
         <div className="min-h-screen bg-background text-on-background font-body selection:bg-primary-container selection:text-on-primary-fixed overflow-x-hidden">
           <Toaster position="top-right" toastOptions={{
             style: {
@@ -205,6 +207,7 @@ export default function App() {
           </Suspense>
         </div>
       </Router>
+      </SoundProvider>
     </ErrorBoundary>
   );
 }

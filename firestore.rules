@@ -104,7 +104,9 @@ service cloud.firestore {
              (!('favoritePlayers' in data) || data.favoritePlayers is list) &&
              (!('favoriteClubs' in data) || data.favoriteClubs is list) &&
              (!('goldenBoot' in data) || data.goldenBoot is string) &&
-             (!('goldenGlove' in data) || data.goldenGlove is string);
+             (!('goldenGlove' in data) || data.goldenGlove is string) &&
+             (!('groupRankings' in data) || data.groupRankings is map) &&
+             (!('bracket' in data) || data.bracket is map);
     }
 
     // ===============================================================

@@ -1,15 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { updateProfile, updateEmail, updatePassword } from 'firebase/auth';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { toast } from 'react-hot-toast';
-import { Loader2 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Loader2, Trophy, Target, Shield, Star, Globe, User as UserIcon, Settings, LogOut, ChevronRight, Activity, TrendingUp, Award, Heart, Edit3, Trash2, CheckCircle2, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  Radar,
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip
+} from "recharts";
 
 import { handleAuthError } from '../../lib/authUtils';
 import { auth, db, handleFirestoreError, OperationType } from '../../firebase';
 import { TOP_20_FIFA_NATIONS } from '../../constants/teams';
-
+import { TEAM_INFO } from '../Tournament/TournamentApp';
 import { NOMINATIONS } from '../../constants/nominations';
 
 export default function Profile({ user, profile, setProfile, onLogout }: any) {
@@ -24,7 +33,12 @@ export default function Profile({ user, profile, setProfile, onLogout }: any) {
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [predictions, setPredictions] = useState<any>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -42,6 +56,56 @@ export default function Profile({ user, profile, setProfile, onLogout }: any) {
     fetchPredictions();
   }, [user.uid]);
 
+  // DNA & Risk Logic
+  const { dnaData, riskScore, predictionDisplay } = useMemo(() => {
+    if (!predictions) return { dnaData: [], riskScore: 0, predictionDisplay: null };
+
+    const p = predictions;
+    const bracket = p.bracket || {};
+    const awards = p.awards || {};
+    const groupRankings = p.groupRankings || {};
+
+    // Risk Calculation (simplified version of TournamentApp logic)
+    // We look at R16 teams picked
+    const r16Teams: string[] = [];
+    Object.values(groupRankings).forEach((teams: any) => {
+      if (teams?.[0]) r16Teams.push(teams[0]);
+      if (teams?.[1]) r16Teams.push(teams[1]);
+    });
+    
+    let avgRankR16 = 0;
+    if (r16Teams.length > 0) {
+      avgRankR16 = r16Teams.reduce((acc, t) => acc + (Number(TEAM_INFO[t]?.ranking) || 40), 0) / r16Teams.length;
+    }
+    const risk = r16Teams.length > 0 ? Math.min(100, Math.max(0, (avgRankR16 / 40) * 100)) : 0;
+
+    // DNA Scores
+    const favoriteTeamsList = profile?.favoriteTeams || [];
+    let loyaltyScore = 20;
+    if (bracket.champion && favoriteTeamsList.includes(bracket.champion)) loyaltyScore = 100;
+    else if (bracket.champion && profile?.nationality === bracket.champion) loyaltyScore = 80;
+
+    const starPowerScore = awards.mvp && awards.mvp !== "TBD" ? 85 : 15;
+    const defenseScore = awards.goldenGlove && awards.goldenGlove !== "TBD" ? 80 : 15;
+
+    const dna = [
+      { subject: "Loyalty", A: loyaltyScore, fullMark: 100 },
+      { subject: "Star Power", A: starPowerScore, fullMark: 100 },
+      { subject: "Defense Bias", A: defenseScore, fullMark: 100 },
+    ];
+
+    return { 
+      dnaData: dna, 
+      riskScore: risk,
+      predictionDisplay: {
+        champion: bracket.champion || 'TBD',
+        mvp: awards.mvp || 'TBD',
+        goldenBoot: awards.goldenBoot || 'TBD',
+        goldenGlove: awards.goldenGlove || 'TBD'
+      }
+    };
+  }, [predictions, profile]);
+
   const handleUnlockPredictions = async () => {
     setUnlocking(true);
     try {
@@ -53,6 +117,48 @@ export default function Profile({ user, profile, setProfile, onLogout }: any) {
       handleFirestoreError(err, OperationType.UPDATE, `predictions/${user.uid}`);
     } finally {
       setUnlocking(false);
+    }
+  };
+
+  const handleResetPredictions = async () => {
+    if (!window.confirm("ARE YOU SURE? This will permanently delete all your group stage picks, brackets, and award selections. This cannot be undone.")) {
+      return;
+    }
+    
+    setResetting(true);
+    try {
+      const predRef = doc(db, 'predictions', user.uid);
+      const leaderboardRef = doc(db, 'leaderboard', user.uid);
+      
+      // Reset state
+      const emptyState = {
+        groupRankings: {},
+        wildcards: [],
+        bracket: {},
+        awards: { mvp: '', goldenBoot: '', goldenGlove: '' },
+        isLocked: false,
+        updatedAt: Date.now()
+      };
+      
+      await updateDoc(predRef, emptyState);
+      
+      // Also update leaderboard to reflect the reset
+      await updateDoc(leaderboardRef, {
+        champion: 'TBD',
+        mvp: 'TBD',
+        goldenBoot: 'TBD',
+        goldenGlove: 'TBD',
+        isLocked: false,
+        potentialPoints: 0,
+        updatedAt: Date.now()
+      });
+      
+      setPredictions(emptyState);
+      toast.success("All predictions have been reset to zero.");
+    } catch (err) {
+      handleFirestoreError(err, OperationType.UPDATE, `predictions/${user.uid}`);
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -110,347 +216,634 @@ export default function Profile({ user, profile, setProfile, onLogout }: any) {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmation !== 'DELETE') {
+      toast.error("Please type DELETE to confirm.");
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      // 1. Delete Firestore Data
+      const userRef = doc(db, 'users', user.uid);
+      const predRef = doc(db, 'predictions', user.uid);
+      const leaderboardRef = doc(db, 'leaderboard', user.uid);
+
+      await Promise.all([
+        deleteDoc(leaderboardRef),
+        deleteDoc(predRef),
+        deleteDoc(userRef)
+      ]);
+
+      // 2. Delete Auth Account
+      await user.delete();
+
+      toast.success("All records purged. Safe journey, Scout.");
+      navigate('/login');
+    } catch (err: any) {
+      console.error("Deletion error:", err);
+      if (err?.code === 'auth/requires-recent-login') {
+        toast.error("Security verification required. Please logout and login again before deleting.");
+      } else {
+        toast.error("Failed to complete data purge. Some systems may still hold records.");
+      }
+    } finally {
+      setDeleting(false);
+      setShowDeleteModal(false);
+    }
+  };
+
   return (
-    <main className="relative min-h-screen w-full flex items-center justify-center p-4 md:p-8 overflow-y-auto">
+    <main className="relative min-h-screen w-full bg-[#050505] overflow-x-hidden font-body text-white">
       {/* Background Asset */}
-      <div className="fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute inset-0 bg-black/40 z-10"></div>
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-black/60 z-10"></div>
         <img 
           alt="FIFA World Cup Trophy" 
-          className="w-full h-full object-cover opacity-20 scale-110 lg:scale-100" 
+          className="w-full h-full object-cover opacity-10 scale-105 blur-[2px]" 
           src="https://lh3.googleusercontent.com/aida-public/AB6AXuC93GCr01cNBAJYf3ZOfXlQ0ND6xtCqRybwxxWjLZWtn3OclTKh1BFOpcqg2s7o6T-TRXfdRlGMIbZnRmj8gpmwUfXrhoYko7LmixchsKrdtxKRwakejMXBM91p3IgwnYCDdHhXJ3Jvi9uuikZ5y4bd7_mH_CySwIs9bfU8Ekw4Q0f3KCxg5CPqpXjdLtXQ-E3zQp-6HK2pGjSxvrP9cbQIII7b17DUY92-PUKkpKb7Au_4Pwd6NagAZPBFW3uGpSYtd5rHMkLDP6zb"
         />
         <div className="absolute inset-0 hero-gradient"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(244,255,200,0.03)_0%,transparent_100%)]"></div>
       </div>
 
-      {/* Top App Bar Branding */}
-      <header className="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-4 md:px-8 h-20 bg-surface-container-highest/80 backdrop-blur-md border-b border-white/5">
-        <div className="flex items-center gap-3 md:gap-6">
-          <button onClick={() => navigate('/')} className="flex items-center gap-2 text-outline-variant hover:text-white transition-colors">
-            <span className="material-symbols-outlined">arrow_back</span>
-            <span className="text-[10px] md:text-xs font-bold tracking-widest uppercase hidden sm:inline">Back</span>
+      {/* Navigation Rail / Header */}
+      <header className="fixed top-0 left-0 w-full z-[100] px-6 py-4 flex items-center justify-between border-b border-white/5 bg-background/80 backdrop-blur-xl">
+        <div className="flex items-center gap-6">
+          <button 
+            onClick={() => navigate('/')} 
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 hover:bg-white/5 transition-all group"
+          >
+            <ArrowLeft size={16} className="text-outline-variant group-hover:text-primary transition-colors" />
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-outline-variant group-hover:text-white">COMMAND CENTER</span>
           </button>
-          <div className="h-6 w-[1px] bg-white/10 hidden sm:block"></div>
+          
+          <div className="h-4 w-[1px] bg-white/10 hidden sm:block"></div>
+          
           <div className="flex flex-col">
-            <div className="text-lg md:text-2xl font-headline font-black text-primary tracking-tight uppercase leading-none">
-              FIFA WORLD CUP 2026
-            </div>
-            <div className="text-[8px] md:text-[10px] font-bold text-outline-variant tracking-widest uppercase mt-1 truncate max-w-[180px] md:max-w-none">
-              Carlos, Family and Friends Elite Pool
-            </div>
+            <h2 className="text-sm md:text-lg font-headline font-black tracking-tight uppercase leading-none text-primary">STRATEGIC DOSSIER</h2>
+            <span className="text-[8px] md:text-[10px] font-bold text-outline-variant tracking-widest uppercase mt-0.5">Scout ID: {user.uid.substring(0, 8)}</span>
           </div>
         </div>
-        <div className="flex items-center gap-4 md:gap-6">
-          <button onClick={onLogout} className="flex items-center gap-2 text-error hover:text-error/80 transition-colors">
-            <span className="material-symbols-outlined text-xl">logout</span>
-            <span className="text-[10px] font-bold tracking-widest uppercase hidden md:inline">Sign Out</span>
-          </button>
+
+        <div className="flex items-center gap-3">
+           <button 
+            onClick={() => setShowSettings(!showSettings)}
+            className={`p-2.5 rounded-xl border transition-all ${showSettings ? 'bg-primary text-on-primary-fixed border-primary' : 'bg-surface-container-highest/40 border-white/5 text-outline-variant hover:text-white'}`}
+          >
+             <Settings size={20} />
+           </button>
+           <button 
+             onClick={onLogout}
+             className="flex items-center gap-2 p-2.5 md:px-5 rounded-xl bg-error/10 border border-error/20 text-error hover:bg-error/20 transition-all font-headline font-black uppercase tracking-widest text-[10px]"
+           >
+             <LogOut size={18} />
+             <span className="hidden md:inline">Terminate Session</span>
+           </button>
         </div>
       </header>
 
-      {/* Profile Canvas */}
-      <div className="relative z-20 w-full max-w-[1200px] mt-24 mb-12 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start px-0 md:px-0">
+      {/* Main Dossier Content */}
+      <div className="relative z-10 max-w-7xl mx-auto px-4 md:px-8 pt-32 pb-24">
+        
+        {/* Top: Identity Bar */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-6 md:p-12 rounded-xl border border-white/10 shadow-[0_48px_100px_-12px_rgba(0,0,0,0.5)] lg:col-span-7"
+          className="glass-card mb-8 p-8 rounded-[2rem] border border-white/5 shadow-2xl relative overflow-hidden"
         >
-          <div className="flex flex-col md:flex-row gap-6 md:gap-8 items-center md:items-start text-center md:text-left mb-10 md:mb-12">
-            <div className="w-20 h-20 md:w-24 md:h-24 bg-primary-container rounded-2xl flex items-center justify-center text-3xl md:text-4xl font-headline font-black text-on-primary-fixed shadow-lg shrink-0">
-              {profile?.displayName?.[0]?.toUpperCase() || '?'}
+          <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
+             <Trophy size={160} />
+          </div>
+
+          <div className="flex flex-col md:flex-row items-center gap-10">
+            <div className="relative">
+              <div className="w-32 h-32 md:w-40 md:h-40 bg-gradient-to-br from-primary to-primary-fixed rounded-[2.5rem] flex items-center justify-center text-5xl font-headline font-black text-on-primary-fixed shadow-[0_0_40px_rgba(207,252,0,0.2)]">
+                {profile?.displayName?.[0]?.toUpperCase() || '?'}
+              </div>
+              <div className="absolute -bottom-2 -right-2 bg-background border-2 border-primary w-10 h-10 rounded-full flex items-center justify-center">
+                 <CheckCircle2 size={24} className="text-primary" />
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl md:text-4xl font-headline font-black text-white tracking-tight uppercase">
-                {profile?.displayName || 'Your Identity'}
+
+            <div className="flex-1 text-center md:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full mb-4">
+                 <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></span>
+                 <span className="text-[10px] font-black tracking-widest text-primary uppercase">ACTIVE OPERATIVE</span>
+              </div>
+              
+              <h1 className="text-5xl md:text-7xl font-headline font-black text-white tracking-tighter uppercase leading-none mb-4">
+                {profile?.displayName}
               </h1>
-              <div className="flex items-center justify-center md:justify-start gap-3 md:gap-4 mt-2">
-                <span className="text-[10px] md:text-xs font-bold tracking-widest text-secondary uppercase">
-                  {NOMINATIONS.find(n => n.id === profile?.nomination)?.title || 'Elite Member'}
-                </span>
-                <div className="h-1 w-1 bg-white/20 rounded-full"></div>
-                <span className="text-[10px] md:text-xs font-bold tracking-widest text-outline-variant uppercase">Joined {new Date(profile?.createdAt || Date.now()).toLocaleDateString()}</span>
+
+              <div className="flex flex-wrap justify-center md:justify-start gap-4 md:gap-8">
+                <div className="flex flex-col">
+                   <span className="text-[10px] font-bold text-outline-variant uppercase tracking-widest mb-1">Rank Identity</span>
+                   <span className="font-headline font-black text-secondary-fixed uppercase italic">
+                     {NOMINATIONS.find(n => n.id === profile?.nomination)?.title || 'Elite Scout'}
+                   </span>
+                </div>
+                <div className="flex flex-col border-l border-white/10 pl-8">
+                   <span className="text-[10px] font-bold text-outline-variant uppercase tracking-widest mb-1">Affiliation</span>
+                   <span className="font-headline font-black text-white uppercase italic">{profile?.nationality || 'Global'}</span>
+                </div>
+                <div className="flex flex-col border-l border-white/10 pl-8">
+                   <span className="text-[10px] font-bold text-outline-variant uppercase tracking-widest mb-1">Clearance Date</span>
+                   <span className="font-headline font-black text-white uppercase italic">
+                     {new Date(profile?.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'short', year: 'numeric', day: 'numeric' })}
+                   </span>
+                </div>
               </div>
             </div>
           </div>
-
-          <form onSubmit={handleUpdateProfile} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">First Name</label>
-                <input 
-                  type="text" 
-                  required
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  className="w-full bg-surface-container-highest/40 border border-outline-variant/20 rounded-sm px-4 py-3 text-sm focus:outline-none focus:border-primary/50 text-white placeholder:text-outline-variant transition-all" 
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Last Name</label>
-                <input 
-                  type="text" 
-                  required
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  className="w-full bg-surface-container-highest/40 border border-outline-variant/20 rounded-sm px-4 py-3 text-sm focus:outline-none focus:border-primary/50 text-white placeholder:text-outline-variant transition-all" 
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Email Address</label>
-              <input 
-                type="email" 
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-surface-container-highest/40 border border-outline-variant/20 rounded-sm px-4 py-3 text-sm focus:outline-none focus:border-primary/50 text-white placeholder:text-outline-variant transition-all" 
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Managerial Identity</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {NOMINATIONS.map((nom) => (
-                  <button
-                    key={nom.id}
-                    type="button"
-                    onClick={() => setNomination(nom.id)}
-                    className={`flex items-start gap-3 p-3 rounded-lg border transition-all text-left ${
-                      nomination === nom.id 
-                        ? 'bg-primary/10 border-primary shadow-sm shadow-primary/10' 
-                        : 'bg-surface-container-highest/40 border-outline-variant/20 hover:border-outline-variant/40'
-                    }`}
-                  >
-                    <div className={`mt-0.5 p-1.5 rounded-sm transition-colors ${
-                      nomination === nom.id ? 'bg-primary text-on-primary' : 'bg-surface-container-highest text-outline-variant'
-                    }`}>
-                      <span className="material-symbols-outlined text-base">{nom.icon}</span>
-                    </div>
-                    <div>
-                      <div className={`text-[11px] font-black uppercase tracking-tight leading-none ${
-                        nomination === nom.id ? 'text-primary' : 'text-white'
-                      }`}>
-                        {nom.title}
-                      </div>
-                      <div className="text-[9px] text-on-surface-variant leading-tight mt-1">
-                        {nom.description}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Nationality</label>
-              <div className="relative">
-                <input 
-                  type="text" 
-                  required
-                  value={nationality}
-                  onChange={(e) => setNationality(e.target.value)}
-                  className="w-full bg-surface-container-highest/40 border border-outline-variant/20 rounded-sm px-4 py-3 text-sm focus:outline-none focus:border-primary/50 text-white placeholder:text-outline-variant transition-all" 
-                />
-                <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant text-lg">public</span>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Top 3 Favorite Teams</label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  {[0, 1, 2].map((index) => (
-                    <div key={`team-${index}`} className="relative">
-                      <select 
-                        required={index === 0}
-                        value={favoriteTeams[index] || ''}
-                        onChange={(e) => {
-                          const newTeams = [...favoriteTeams];
-                          newTeams[index] = e.target.value;
-                          setFavoriteTeams(newTeams);
-                        }}
-                        className="appearance-none w-full bg-surface-container-highest/40 border border-outline-variant/20 rounded-sm px-4 py-3 text-sm focus:outline-none focus:border-primary/50 text-white transition-all cursor-pointer"
-                      >
-                        <option value="" disabled>Team {index + 1}</option>
-                        {TOP_20_FIFA_NATIONS.map(team => (
-                          <option key={team} value={team}>{team}</option>
-                        ))}
-                      </select>
-                      <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline-variant text-base pointer-events-none">flag</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Top 3 Favorite Players</label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  {[0, 1, 2].map((index) => (
-                    <div key={`player-${index}`} className="relative">
-                      <input 
-                        type="text" 
-                        required={index === 0}
-                        value={favoritePlayers[index] || ''}
-                        onChange={(e) => {
-                          const newPlayers = [...favoritePlayers];
-                          newPlayers[index] = e.target.value;
-                          setFavoritePlayers(newPlayers);
-                        }}
-                        className="w-full bg-surface-container-highest/40 border border-outline-variant/20 rounded-sm px-4 py-3 text-sm focus:outline-none focus:border-primary/50 text-white placeholder:text-outline-variant transition-all" 
-                        placeholder={`Player ${index + 1}`} 
-                      />
-                      <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline-variant text-base">person</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Top 3 Favorite Clubs</label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                  {[0, 1, 2].map((index) => (
-                    <div key={`club-${index}`} className="relative">
-                      <input 
-                        type="text" 
-                        required={index === 0}
-                        value={favoriteClubs[index] || ''}
-                        onChange={(e) => {
-                          const newClubs = [...favoriteClubs];
-                          newClubs[index] = e.target.value;
-                          setFavoriteClubs(newClubs);
-                        }}
-                        className="w-full bg-surface-container-highest/40 border border-outline-variant/20 rounded-sm px-4 py-3 text-sm focus:outline-none focus:border-primary/50 text-white placeholder:text-outline-variant transition-all" 
-                        placeholder={`Club ${index + 1}`} 
-                      />
-                      <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline-variant text-base">sports_soccer</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ml-1">Update Password (Optional)</label>
-              <input 
-                type="password" 
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full bg-surface-container-highest/40 border border-outline-variant/20 rounded-sm px-4 py-3 text-sm focus:outline-none focus:border-primary/50 text-white placeholder:text-outline-variant transition-all" 
-                placeholder="Leave blank to keep current" 
-              />
-            </div>
-
-            <div className="pt-6">
-              <button 
-                type="submit" 
-                disabled={loading}
-                className="w-full bg-primary-container hover:bg-primary py-4 rounded-sm flex items-center justify-center gap-3 transition-all duration-300 group disabled:opacity-50"
-              >
-                {loading ? (
-                  <Loader2 className="animate-spin text-on-primary-fixed" size={20} />
-                ) : (
-                  <>
-                    <span className="text-on-primary-fixed font-headline font-black uppercase tracking-widest text-sm">Update Identity</span>
-                    <span className="material-symbols-outlined text-on-primary-fixed text-lg">save</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
         </motion.div>
 
-        {/* Predictions Sidebar */}
+        {/* Bento Grid: Strategy & Personal */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
+          
+          {/* Section: Strategic DNA */}
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+            className="lg:col-span-4 glass-card p-8 rounded-[2.5rem] border border-white/5 flex flex-col"
+          >
+            <div className="flex items-center justify-between mb-8">
+               <h3 className="text-sm font-headline font-black uppercase tracking-[0.2em] text-on-surface-variant flex items-center gap-2">
+                 <Activity size={16} className="text-primary" /> SCOUT DNA
+               </h3>
+               <div className="flex items-center gap-1.5 px-3 py-1 bg-white/5 border border-white/10 rounded-full">
+                  <span className="text-[10px] font-black text-primary">RISK: {Math.round(riskScore)}%</span>
+               </div>
+            </div>
+
+            <div className="h-64 w-full mb-8">
+              <ResponsiveContainer width="100%" height="100%">
+                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={dnaData}>
+                  <PolarGrid stroke="rgba(255,255,255,0.05)" />
+                  <PolarAngleAxis 
+                    dataKey="subject" 
+                    tick={{ fill: "#ababab", fontSize: 10, fontWeight: 800, textTransform: 'uppercase' }} 
+                  />
+                  <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+                  <Radar
+                    name="Scout"
+                    dataKey="A"
+                    stroke="#f4ffc8"
+                    fill="#f4ffc8"
+                    fillOpacity={0.4}
+                    strokeWidth={2}
+                  />
+                  <RechartsTooltip 
+                    contentStyle={{ backgroundColor: '#191919', border: '1px solid #262626', borderRadius: '8px' }}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="mt-auto space-y-4">
+               <div className="bg-surface-container-highest/30 p-4 rounded-2xl border border-white/5">
+                  <p className="text-[10px] font-bold text-outline-variant uppercase tracking-widest mb-1 italic">Mindset Analysis</p>
+                  <p className="text-xs text-white leading-relaxed">
+                    {riskScore > 60 ? "Aggressive scout favoring long-shot narratives over statistical probability." : 
+                     riskScore < 20 ? "Highly clinical approach, favoring established giants and tournament history." : 
+                     "Balanced methodology, mixing logical outcomes with calculated risks."}
+                  </p>
+               </div>
+            </div>
+          </motion.div>
+
+          {/* Section: Tournament Objective */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="lg:col-span-5 glass-card p-8 rounded-[2.5rem] border border-white/5"
+          >
+             <h3 className="text-sm font-headline font-black uppercase tracking-[0.2em] text-on-surface-variant mb-8 flex items-center gap-2">
+               <Target size={16} className="text-secondary" /> STRATEGIC INTENT
+             </h3>
+
+             <div className="space-y-6">
+                <div className="bg-gradient-to-br from-secondary/5 to-transparent p-6 rounded-3xl border border-secondary/10 relative group">
+                   <div className="absolute top-4 right-4 text-secondary/20">
+                      <Trophy size={48} />
+                   </div>
+                   <p className="text-[10px] font-bold text-outline-variant uppercase tracking-[0.3em] mb-2 font-mono">CHAMPION_PROTOCOL</p>
+                   <p className="text-5xl font-headline font-black text-white uppercase italic tracking-tighter transition-all group-hover:scale-[1.02] origin-left">
+                     {predictionDisplay?.champion}
+                   </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   <div className="bg-surface-container-highest/20 p-5 rounded-3xl border border-white/5">
+                      <p className="text-[10px] font-bold text-outline-variant uppercase tracking-widest mb-2 font-mono">MVP_SELECTION</p>
+                      <div className="flex items-center gap-3">
+                         <div className="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary">
+                            <Star size={16} />
+                         </div>
+                         <p className="text-lg font-headline font-black text-white uppercase italic">{predictionDisplay?.mvp}</p>
+                      </div>
+                   </div>
+                   <div className="bg-surface-container-highest/20 p-5 rounded-3xl border border-white/5">
+                      <p className="text-[10px] font-bold text-outline-variant uppercase tracking-widest mb-2 font-mono">TOP_SCORER</p>
+                      <div className="flex items-center gap-3">
+                         <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                            <TrendingUp size={16} />
+                         </div>
+                         <p className="text-lg font-headline font-black text-white uppercase italic">{predictionDisplay?.goldenBoot}</p>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="pt-6 border-t border-white/5 flex flex-col md:flex-row gap-4">
+                  <button 
+                    onClick={predictions?.isLocked ? handleUnlockPredictions : () => navigate('/')}
+                    disabled={unlocking}
+                    className="flex-1 flex items-center justify-center gap-3 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition-all font-headline font-black uppercase tracking-widest text-[11px]"
+                  >
+                    {unlocking ? <Loader2 size={16} className="animate-spin" /> : <Edit3 size={16} className="text-primary" />}
+                    {predictions?.isLocked ? 'Modify Strategy' : 'Update Bracket'}
+                  </button>
+                  <button 
+                    onClick={handleResetPredictions}
+                    disabled={resetting}
+                    className="flex-1 flex items-center justify-center gap-3 py-4 bg-error/5 hover:bg-error/10 border border-error/20 rounded-2xl transition-all font-headline font-black uppercase tracking-widest text-[11px] text-error"
+                  >
+                    {resetting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                    Purge Intel
+                  </button>
+                </div>
+             </div>
+          </motion.div>
+
+          {/* Section: Clubhouse Favorites */}
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+            className="lg:col-span-3 glass-card p-8 rounded-[2.5rem] border border-white/5"
+          >
+             <h3 className="text-sm font-headline font-black uppercase tracking-[0.2em] text-on-surface-variant mb-8 flex items-center gap-2">
+               <Heart size={16} className="text-tertiary" /> CLUBHOUSE
+             </h3>
+
+             <div className="space-y-8">
+                <div>
+                   <p className="text-[10px] font-black text-outline-variant uppercase tracking-widest mb-4 flex items-center gap-2">
+                     <Globe size={10} /> Top Contenders
+                   </p>
+                   <div className="space-y-3">
+                      {favoriteTeams.map((team: string, i: number) => team && (
+                        <div key={i} className="flex items-center gap-3 p-3 bg-white/3 rounded-xl border border-white/5 transition-hover hover:bg-white/5">
+                           <span className="text-[10px] font-black text-primary w-4">0{i+1}</span>
+                           <span className="text-sm font-bold uppercase italic">{team}</span>
+                        </div>
+                      ))}
+                   </div>
+                </div>
+
+                <div>
+                   <p className="text-[10px] font-black text-outline-variant uppercase tracking-widest mb-4 flex items-center gap-2">
+                     <UserIcon size={10} /> Marquee Talent
+                   </p>
+                   <div className="space-y-3">
+                      {favoritePlayers.map((player: string, i: number) => player && (
+                        <div key={i} className="flex items-center gap-3 p-3 bg-white/3 rounded-xl border border-white/5 transition-hover hover:bg-white/5">
+                           <span className="text-[10px] font-black text-secondary w-4">0{i+1}</span>
+                           <span className="text-sm font-bold uppercase italic">{player}</span>
+                        </div>
+                      ))}
+                   </div>
+                </div>
+
+                <div>
+                   <p className="text-[10px] font-black text-outline-variant uppercase tracking-widest mb-4 flex items-center gap-2">
+                     <Shield size={10} /> Home Grounds
+                   </p>
+                   <div className="space-y-3">
+                      {favoriteClubs.map((club: string, i: number) => club && (
+                        <div key={i} className="flex items-center gap-3 p-3 bg-white/3 rounded-xl border border-white/5 transition-hover hover:bg-white/5">
+                           <span className="text-[10px] font-black text-white w-4">0{i+1}</span>
+                           <span className="text-sm font-bold uppercase italic">{club}</span>
+                        </div>
+                      ))}
+                   </div>
+                </div>
+             </div>
+          </motion.div>
+        </div>
+
+        {/* Identity Management (Collapsible Settings) */}
+        <AnimatePresence>
+          {showSettings && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="glass-card p-12 rounded-[3rem] border border-primary/20 mb-12 relative">
+                <div className="absolute top-12 left-12 opacity-5 pointer-events-none">
+                   <Settings size={120} />
+                </div>
+                <div className="max-w-4xl mx-auto">
+                  <header className="mb-12 text-center md:text-left">
+                    <h2 className="text-3xl font-headline font-black text-white uppercase tracking-tight mb-2 italic">IDENTITY OVERRIDE</h2>
+                    <p className="text-outline-variant text-[10px] font-bold uppercase tracking-[0.3em]">Modify secure personnel files</p>
+                  </header>
+
+                  <form onSubmit={handleUpdateProfile} className="space-y-10">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 italic font-mono">FIELD_FIRST_NAME</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                          className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-primary/50 text-white font-bold transition-all" 
+                        />
+                      </div>
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 italic font-mono">FIELD_LAST_NAME</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                          className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-primary/50 text-white font-bold transition-all" 
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 italic font-mono">COMMUNICATIONS_UPLINK</label>
+                      <input 
+                        type="email" 
+                        required
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-primary/50 text-white font-bold transition-all" 
+                      />
+                    </div>
+
+                    <div className="space-y-6">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 italic font-mono">SCOUT_CLASSIFICATION</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {NOMINATIONS.map((nom) => (
+                          <button
+                            key={nom.id}
+                            type="button"
+                            onClick={() => setNomination(nom.id)}
+                            className={`flex items-start gap-4 p-5 rounded-2xl border transition-all text-left group ${
+                              nomination === nom.id 
+                                ? 'bg-primary/10 border-primary shadow-[0_0_20px_rgba(207,252,0,0.1)]' 
+                                : 'bg-black/40 border-white/5 hover:border-white/20'
+                            }`}
+                          >
+                            <div className={`mt-0.5 p-3 rounded-xl transition-all ${
+                              nomination === nom.id ? 'bg-primary text-on-primary' : 'bg-surface-container-highest text-outline-variant group-hover:text-white'
+                            }`}>
+                              <span className="material-symbols-outlined text-xl">{nom.icon}</span>
+                            </div>
+                            <div>
+                              <div className={`text-base font-black uppercase italic leading-none truncate ${
+                                nomination === nom.id ? 'text-primary' : 'text-white'
+                              }`}>
+                                {nom.title}
+                              </div>
+                              <div className="text-[8px] font-black text-secondary-fixed uppercase tracking-widest mt-1 opacity-70">
+                                {nom.subtitle}
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 italic font-mono">SECURITY_CREDENTIALS</label>
+                        <input 
+                          type="password" 
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-primary/50 text-white font-bold transition-all" 
+                          placeholder="REMAIN UNCHANGED" 
+                        />
+                      </div>
+
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 italic font-mono">ORIGIN_WORLD</label>
+                        <div className="relative">
+                          <input 
+                            type="text" 
+                            required
+                            value={nationality}
+                            onChange={(e) => setNationality(e.target.value)}
+                            className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-primary/50 text-white font-bold transition-all" 
+                          />
+                          <Globe size={18} className="absolute right-5 top-1/2 -translate-y-1/2 text-outline-variant" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-8 pt-4 border-t border-white/5">
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 italic font-mono">FAVORITE_NATIONS_PRIORITY</label>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {[0, 1, 2].map((index) => (
+                            <div key={`team-${index}`} className="relative">
+                              <select 
+                                required={index === 0}
+                                value={favoriteTeams[index] || ''}
+                                onChange={(e) => {
+                                  const newTeams = [...favoriteTeams];
+                                  newTeams[index] = e.target.value;
+                                  setFavoriteTeams(newTeams);
+                                }}
+                                className="appearance-none w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-primary/50 text-white font-bold transition-all cursor-pointer"
+                              >
+                                <option value="" disabled>SELECTION {index + 1}</option>
+                                {TOP_20_FIFA_NATIONS.map(team => (
+                                  <option key={team} value={team} className="bg-background">{team}</option>
+                                ))}
+                              </select>
+                              <ChevronRight size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant rotate-90" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 italic font-mono">FAVORITE_PLAYERS_WATCHLIST</label>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {[0, 1, 2].map((index) => (
+                            <input 
+                              key={`player-${index}`}
+                              type="text" 
+                              required={index === 0}
+                              value={favoritePlayers[index] || ''}
+                              onChange={(e) => {
+                                const newPlayers = [...favoritePlayers];
+                                newPlayers[index] = e.target.value;
+                                setFavoritePlayers(newPlayers);
+                              }}
+                              className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-primary/50 text-white font-bold transition-all" 
+                              placeholder={`OPERATIVE ${index + 1}`} 
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 italic font-mono">FAVORITE_CLUBS_REGISTRY</label>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {[0, 1, 2].map((index) => (
+                            <input 
+                              key={`club-${index}`}
+                              type="text" 
+                              required={index === 0}
+                              value={favoriteClubs[index] || ''}
+                              onChange={(e) => {
+                                const newClubs = [...favoriteClubs];
+                                newClubs[index] = e.target.value;
+                                setFavoriteClubs(newClubs);
+                              }}
+                              className="w-full bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-primary/50 text-white font-bold transition-all" 
+                              placeholder={`ESTABLISHMENT ${index + 1}`} 
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-10">
+                      <button 
+                        type="submit" 
+                        disabled={loading}
+                        className="w-full h-16 bg-primary hover:bg-primary-fixed text-on-primary-fixed rounded-2xl flex items-center justify-center gap-3 transition-all duration-500 shadow-[0_0_40px_rgba(207,252,0,0.15)] hover:shadow-[0_0_50px_rgba(207,252,0,0.3)] group disabled:opacity-50"
+                      >
+                        {loading ? (
+                          <Loader2 className="animate-spin" size={24} />
+                        ) : (
+                          <>
+                            <span className="font-headline font-black uppercase tracking-[0.3em] text-sm italic">SYNCHRONIZE_IDENTITY</span>
+                            <Target size={20} className="group-hover:rotate-45 transition-transform" />
+                          </>
+                        )}
+                      </button>
+                      <p className="text-center text-[8px] text-outline-variant uppercase tracking-[0.4em] mt-4 font-mono">WARNING: AUTHORIZED PERSONNEL ONLY</p>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Danger Zone: Terminal Account Protocol */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="lg:col-span-5 space-y-6"
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mt-12 glass-card p-8 md:p-12 rounded-[2.5rem] border border-error/20 bg-error/5 relative overflow-hidden"
         >
-          <div className="glass-card p-6 md:p-8 rounded-xl border border-white/10 shadow-lg">
-            <h2 className="text-xl font-headline font-black text-white tracking-tight uppercase mb-6 flex items-center gap-3">
-              <span className="material-symbols-outlined text-primary">emoji_events</span>
-              Tournament Predictions
-            </h2>
+          <div className="absolute top-0 right-0 p-8 opacity-5 text-error pointer-events-none">
+             <AlertTriangle size={160} />
+          </div>
+          
+          <div className="relative z-10 max-w-3xl">
+            <header className="mb-6">
+              <h2 className="text-2xl md:text-3xl font-headline font-black text-error uppercase tracking-tight mb-2 italic">DANGER_ZONE: TERMINAL_ACCOUNT_PROTOCOL</h2>
+              <p className="text-error/60 text-[10px] font-bold uppercase tracking-[0.3em]">Critical Action: Permanent Data Erasure</p>
+            </header>
             
-            {predictions ? (
-              <div className="space-y-6">
-                <div className="bg-surface-container-highest/30 p-4 rounded-lg border border-white/5">
-                  <p className="text-[10px] font-bold text-outline-variant uppercase tracking-widest mb-1">Champion Pick</p>
-                  <p className="text-2xl font-headline font-black text-secondary uppercase">{predictions.bracket?.champion || 'TBD'}</p>
+            <p className="text-sm text-error/80 leading-relaxed mb-8 max-w-2xl">
+              Proceeding with this protocol will permanently terminate your status as an Elite Scout. All predictions, bracket intel, leaderboard standings, and profile metadata will be scrubbed from the secure server. This action is irreversible.
+            </p>
+
+            <button 
+              onClick={() => setShowDeleteModal(true)}
+              className="px-8 h-14 bg-error text-white rounded-2xl flex items-center justify-center gap-3 transition-all hover:bg-red-700 shadow-[0_0_30px_rgba(255,0,0,0.2)] font-headline font-black uppercase tracking-widest text-[11px]"
+            >
+              <Trash2 size={18} />
+              Terminate Account & Purge Records
+            </button>
+          </div>
+        </motion.div>
+
+      </div>
+
+      {/* Account Deletion Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center px-4 md:px-0">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !deleting && setShowDeleteModal(false)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+            />
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg bg-surface-container rounded-[2rem] border border-error/30 p-8 md:p-10 shadow-2xl overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-error"></div>
+              
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 bg-error/20 rounded-2xl flex items-center justify-center text-error mb-6">
+                  <AlertTriangle size={32} />
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-surface-container-highest/30 p-4 rounded-lg border border-white/5">
-                    <p className="text-[10px] font-bold text-outline-variant uppercase tracking-widest mb-1">Golden Ball</p>
-                    <p className="text-sm font-bold text-white">{predictions.awards?.mvp || 'TBD'}</p>
-                  </div>
-                  <div className="bg-surface-container-highest/30 p-4 rounded-lg border border-white/5">
-                    <p className="text-[10px] font-bold text-outline-variant uppercase tracking-widest mb-1">Golden Boot</p>
-                    <p className="text-sm font-bold text-white">{predictions.awards?.goldenBoot || 'TBD'}</p>
-                  </div>
-                  <div className="bg-surface-container-highest/30 p-4 rounded-lg border border-white/5 col-span-2">
-                    <p className="text-[10px] font-bold text-outline-variant uppercase tracking-widest mb-1">Golden Glove</p>
-                    <p className="text-sm font-bold text-white">{predictions.awards?.goldenGlove || 'TBD'}</p>
-                  </div>
+                <h3 className="text-2xl font-headline font-black text-white uppercase tracking-tight mb-4 italic">CRITICAL_CONFIRMATION_REQUIRED</h3>
+                
+                <p className="text-outline-variant text-[11px] font-bold uppercase tracking-widest mb-8 leading-loose">
+                  You are about to initiate total data erasure. This will delete your leaderboard rank, all predictions, and your authentication credentials.
+                </p>
+
+                <div className="w-full space-y-4 mb-8">
+                  <p className="text-[10px] font-black text-error uppercase tracking-[0.2em]">TYPE "DELETE" TO AUTHORIZE TERMINATION</p>
+                  <input 
+                    type="text"
+                    placeholder="Type DELETE here"
+                    value={deleteConfirmation}
+                    onChange={(e) => setDeleteConfirmation(e.target.value.toUpperCase())}
+                    className="w-full bg-black/40 border border-error/30 rounded-2xl px-6 py-4 text-center text-lg font-black text-error placeholder:text-error/20 focus:outline-none focus:border-error transition-all uppercase"
+                  />
                 </div>
 
-                <div className="pt-4 border-t border-white/10 flex items-center justify-between">
-                  <span className="text-xs text-outline-variant font-bold uppercase tracking-widest">Status</span>
-                  {predictions.isLocked ? (
-                    <div className="bg-success/10 text-success px-3 py-1.5 rounded-sm text-[10px] font-headline font-black uppercase flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">check_circle</span> Verified
-                    </div>
-                  ) : (
-                    <div className="bg-secondary/10 text-secondary px-3 py-1.5 rounded-sm text-[10px] font-headline font-black uppercase flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">info</span> Drafting
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-4">
+                <div className="flex flex-col sm:flex-row gap-4 w-full">
                   <button 
-                    onClick={predictions.isLocked ? handleUnlockPredictions : () => navigate('/')}
-                    disabled={unlocking}
-                    className="w-full bg-white/5 hover:bg-white/10 border border-white/10 py-3 rounded-sm flex items-center justify-center gap-2 transition-all group"
+                    disabled={deleting || deleteConfirmation !== 'DELETE'}
+                    onClick={handleDeleteAccount}
+                    className="flex-1 h-14 bg-error hover:bg-red-700 text-white rounded-2xl font-headline font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                   >
-                    {unlocking ? (
-                      <Loader2 className="animate-spin text-primary" size={18} />
-                    ) : (
-                      <>
-                        <span className="material-symbols-outlined text-primary text-lg">edit</span>
-                        <span className="text-[11px] font-bold uppercase tracking-widest text-white">
-                          {predictions.isLocked ? 'Unlock & Modify Predictions' : 'Continue Editing Predictions'}
-                        </span>
-                      </>
-                    )}
+                    {deleting ? <Loader2 size={18} className="animate-spin" /> : <Trash2 size={18} />}
+                    CONFIRM PURGE
                   </button>
-                  {predictions.isLocked && (
-                    <p className="text-[9px] text-outline-variant text-center mt-2 uppercase font-medium">
-                      Unlocking will allow you to change your bracket and awards.
-                    </p>
-                  )}
+                  <button 
+                    disabled={deleting}
+                    onClick={() => setShowDeleteModal(false)}
+                    className="flex-1 h-14 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-2xl font-headline font-black uppercase tracking-widest text-[11px] transition-all"
+                  >
+                    ABORT_COMMAND
+                  </button>
                 </div>
               </div>
-            ) : (
-              <div className="text-center py-8">
-                <span className="material-symbols-outlined text-4xl text-outline-variant mb-2">hourglass_empty</span>
-                <p className="text-sm text-outline-variant">No predictions made yet.</p>
-                <button 
-                  onClick={() => navigate('/')}
-                  className="mt-4 text-primary text-sm font-bold hover:underline"
-                >
-                  Start Predicting
-                </button>
-              </div>
-            )}
+            </motion.div>
           </div>
-        </motion.div>
-      </div>
+        )}
+      </AnimatePresence>
 
       {/* Visual Texture Overlay */}
       <div 
-        className="fixed inset-0 pointer-events-none opacity-[0.03] z-[100]" 
+        className="fixed inset-0 pointer-events-none opacity-[0.02] z-[1000] mix-blend-overlay" 
         style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuBG-FJt1_KW7fjiGClQqNXst_RT4vJC2bRbOCI3kHZaoLsVjxdViFc22M0IjU90j9xL6C7zbnfo9lsQyDmmhGfFV-aC4KkZl5G4XiGFce0mhLIsHONcevHQOKhBhxiFhLj6WMkONDTnQ84NzEIjvbMIpH8nO51LIiCLAzhLWk3yhgU9rt9Zd_oEctZGAnb6PJEiO-9fzjZPwS0IiucK5wIHsPRtrPMxQQWzKKBC-TTT7osf748fkgu5LQ5hVnRFtVH_8HzmXVQAWr3V')" }}
       ></div>
     </main>
