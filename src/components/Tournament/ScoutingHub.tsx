@@ -23,6 +23,13 @@ import { AnimatePresence } from 'motion/react';
 import { NATIONS_DATA } from '../../constants/nationsData';
 import { SCHEDULE_DATA, Match } from '../../constants/scheduleData';
 import { SQUADS_DATA } from '../../constants/squadsData';
+import { 
+  GROUP_INSIGHTS, 
+  MARKET_ODDS, 
+  KNOCKOUT_FORECAST, 
+  TOURNAMENT_STATS, 
+  BETTING_INSIGHTS 
+} from '../../constants/scoutIntelligence';
 
 const TEAM_FLAGS: Record<string, string> = {
   'South Africa': 'za',
@@ -300,6 +307,7 @@ const ScoutingHub = () => {
   const tabs = [
     { id: 'matches', label: 'Upcoming Matches', icon: <Calendar className="w-4 h-4" /> },
     { id: 'contenders', label: 'Teams by Ranking', icon: <Users className="w-4 h-4" /> },
+    { id: 'outlook', label: 'Pre-Tournament Outlook', icon: <TrendingUp className="w-4 h-4" /> },
     { id: 'info', label: 'Tournament Info', icon: <Info className="w-4 h-4" /> }
   ];
 
@@ -645,6 +653,257 @@ const ScoutingHub = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </motion.section>
+        )}
+
+        {activeTab === 'outlook' && (
+          <motion.section 
+            key="outlook-tab"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="space-y-12"
+          >
+            {/* Tournament Overview */}
+            <div className="glass-card border border-white/10 p-8 rounded-3xl bg-gradient-to-br from-primary/10 to-transparent">
+              <h2 className="text-3xl font-headline font-black uppercase text-white mb-4 flex items-center gap-3">
+                <Globe className="text-primary" /> Tournament Overview
+              </h2>
+              <p className="text-on-surface-variant leading-relaxed text-lg max-w-4xl">
+                The 2026 FIFA World Cup will be the largest tournament in history, featuring 48 teams, 12 groups, and 104 total matches. 
+                Betting markets currently favor several European powerhouses, while South American giants remain strong contenders for the title.
+              </p>
+            </div>
+
+            <div className="grid lg:grid-cols-2 gap-8">
+              {/* Winner Odds */}
+              <div className="glass-card border border-white/10 rounded-3xl overflow-hidden">
+                <div className="bg-surface-container-highest px-6 py-4 border-b border-white/5">
+                  <h3 className="font-headline font-black uppercase text-white tracking-widest text-sm flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-primary" /> Tournament Winner Odds
+                  </h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-white/5">
+                        <th className="px-6 py-4 text-[10px] font-black text-outline-variant uppercase tracking-widest">Nation</th>
+                        <th className="px-6 py-4 text-[10px] font-black text-outline-variant uppercase tracking-widest text-right">Odds</th>
+                        <th className="px-6 py-4 text-[10px] font-black text-outline-variant uppercase tracking-widest text-right">Chance</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {MARKET_ODDS.tournamentWinner.map((o) => (
+                        <tr key={o.team} className="hover:bg-white/5 transition-colors group">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <img 
+                                src={`https://flagcdn.com/w40/${getFlagCode(o.team)}.png`} 
+                                className="w-6 h-4 object-cover rounded shadow-sm"
+                                referrerPolicy="no-referrer"
+                                alt=""
+                              />
+                              <span className="font-bold text-white group-hover:text-primary transition-colors">{o.team}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-right font-black text-white">{o.odds}</td>
+                          <td className="px-6 py-4 text-right font-black text-primary">{o.chance}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Individual Awards */}
+              <div className="space-y-6">
+                <div className="glass-card border border-white/10 p-6 rounded-3xl h-full">
+                  <h3 className="font-headline font-black uppercase text-white tracking-widest text-sm mb-6 flex items-center gap-2">
+                    <Star className="w-4 h-4 text-amber-400" /> Individual Awards Favorites
+                  </h3>
+                  <div className="space-y-6">
+                    <div>
+                      <p className="text-[10px] font-black text-outline-variant uppercase tracking-[0.2em] mb-3">Golden Ball (MVP)</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {MARKET_ODDS.goldenBall.slice(0, 4).map(p => (
+                          <div key={p.name} className="bg-surface-container-highest/20 p-3 rounded-xl border border-white/5 flex justify-between items-center">
+                            <span className="text-xs font-bold text-white truncate mr-2">{p.name}</span>
+                            <span className="text-[10px] font-black text-primary">{p.odds}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-outline-variant uppercase tracking-[0.2em] mb-3">Golden Boot (Top Scorer)</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        {MARKET_ODDS.goldenBoot.slice(0, 4).map(p => (
+                          <div key={p.name} className="bg-surface-container-highest/20 p-3 rounded-xl border border-white/5 flex justify-between items-center">
+                            <span className="text-xs font-bold text-white truncate mr-2">{p.name}</span>
+                            <span className="text-[10px] font-black text-secondary">{p.odds}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Group Stage Projections */}
+            <div className="glass-card border border-white/10 rounded-3xl overflow-hidden">
+              <div className="bg-surface-container-highest px-6 py-4 border-b border-white/5">
+                <h3 className="font-headline font-black uppercase text-white tracking-widest text-sm flex items-center gap-2">
+                  <ClipboardList className="w-4 h-4 text-primary" /> Group Stage Projections
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-px bg-white/5">
+                {Object.entries(GROUP_INSIGHTS).map(([id, insight]) => (
+                  <div key={id} className="bg-surface-container-low p-6 hover:bg-surface-container-highest/30 transition-colors">
+                    <div className="flex justify-between items-center mb-4">
+                      <span className="font-headline font-black text-primary text-sm uppercase">Group {id}</span>
+                      <span className="text-[10px] font-bold text-outline-variant uppercase tracking-widest">{insight.status}</span>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-black text-outline-variant uppercase tracking-widest">Projected Winner</p>
+                        <div className="flex items-center gap-2">
+                          <img 
+                            src={`https://flagcdn.com/w40/${getFlagCode(insight.favorite)}.png`} 
+                            className="w-4 h-2.5 object-cover rounded-sm"
+                            referrerPolicy="no-referrer"
+                            alt=""
+                          />
+                          <span className="text-xs font-black text-white">{insight.favorite}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-black text-outline-variant uppercase tracking-widest">Runner-Up</p>
+                        <div className="flex items-center gap-2">
+                          {insight.upsetPick && (
+                            <>
+                              <img 
+                                src={`https://flagcdn.com/w40/${getFlagCode(insight.upsetPick.split(' (')[0])}.png`} 
+                                className="w-4 h-2.5 object-cover rounded-sm"
+                                referrerPolicy="no-referrer"
+                                alt=""
+                              />
+                              <span className="text-xs font-bold text-on-surface-variant">{insight.upsetPick.split(' (')[0]}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Knockout Forecast */}
+            <div className="space-y-8">
+              <h3 className="text-2xl font-headline font-black uppercase text-white tracking-widest flex items-center gap-2">
+                <Target className="text-primary w-6 h-6" /> Knockout Stage Forecast
+              </h3>
+              
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="glass-card border border-white/10 p-6 rounded-2xl">
+                  <p className="text-[10px] font-black text-outline-variant uppercase tracking-[0.2em] mb-4">Round of 32 Exit</p>
+                  <div className="flex flex-wrap gap-2 text-[10px] font-bold">
+                    {KNOCKOUT_FORECAST.roundOf32.eliminations.map(e => (
+                      <span key={e} className="bg-surface-container-highest/50 px-2 py-1 rounded text-on-surface-variant">{e}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="glass-card border border-white/10 p-6 rounded-2xl">
+                  <p className="text-[10px] font-black text-outline-variant uppercase tracking-[0.2em] mb-4">Round of 16 Exit</p>
+                  <div className="flex flex-wrap gap-2 text-[10px] font-bold">
+                    {KNOCKOUT_FORECAST.roundOf16.eliminations.map(e => (
+                      <span key={e} className="bg-surface-container-highest/50 px-2 py-1 rounded text-on-surface-variant">{e}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="glass-card border border-white/10 p-6 rounded-2xl">
+                  <p className="text-[10px] font-black text-outline-variant uppercase tracking-[0.2em] mb-4">Quarterfinal Exit</p>
+                  <div className="flex flex-wrap gap-2 text-[10px] font-bold">
+                    {KNOCKOUT_FORECAST.quarterfinals.eliminations.map(e => (
+                      <span key={e} className="bg-surface-container-highest/50 px-2 py-1 rounded text-on-surface-variant">{e}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="glass-card border border-white/10 p-6 rounded-2xl">
+                  <p className="text-[10px] font-black text-outline-variant uppercase tracking-[0.2em] mb-4">Semifinal Exit</p>
+                  <div className="flex flex-wrap gap-2 text-[10px] font-bold">
+                    {KNOCKOUT_FORECAST.semifinals.eliminations.map(e => (
+                      <span key={e} className="bg-surface-container-highest/50 px-2 py-1 rounded text-on-surface-variant">{e}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* The Grand Final */}
+              <div className="glass-card border border-secondary/30 p-8 rounded-3xl bg-gradient-to-r from-secondary/10 to-transparent relative overflow-hidden">
+                <div className="absolute right-0 top-0 h-full w-1/3 bg-secondary/5 blur-3xl rounded-full translate-x-1/2 -translate-y-1/2" />
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+                  <div className="space-y-4">
+                     <p className="text-[10px] font-black text-secondary uppercase tracking-[0.3em]">The Grand Final • {KNOCKOUT_FORECAST.final.venue}</p>
+                     <p className="text-4xl md:text-5xl font-headline font-black text-white uppercase tracking-tight">The Final Projection</p>
+                  </div>
+                  <div className="flex items-center gap-12">
+                    <div className="text-center">
+                      <p className="text-[10px] font-black text-outline-variant uppercase tracking-widest mb-3">Runner-Up</p>
+                      <div className="flex flex-col items-center gap-2">
+                         <img 
+                          src={`https://flagcdn.com/w80/${getFlagCode(KNOCKOUT_FORECAST.final.runnerUp)}.png`}
+                          className="w-12 h-8 object-cover rounded shadow-lg"
+                          referrerPolicy="no-referrer"
+                          alt=""
+                        />
+                         <span className="font-headline font-black text-white uppercase">{KNOCKOUT_FORECAST.final.runnerUp}</span>
+                      </div>
+                    </div>
+                    <div className="text-center group">
+                      <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-3">🏆 Champion</p>
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-amber-400 blur-xl opacity-20 group-hover:opacity-40 transition-opacity" />
+                          <img 
+                            src={`https://flagcdn.com/w80/${getFlagCode(KNOCKOUT_FORECAST.final.champion)}.png`}
+                            className="w-16 h-10 object-cover rounded shadow-lg relative z-10 scale-110"
+                            referrerPolicy="no-referrer"
+                            alt=""
+                          />
+                        </div>
+                        <span className="font-headline font-black text-amber-400 uppercase text-lg group-hover:scale-105 transition-transform">{KNOCKOUT_FORECAST.final.champion}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tournament Betting Statistics */}
+            <div className="grid lg:grid-cols-3 gap-8">
+               <div className="lg:col-span-2 space-y-6">
+                 <h3 className="text-xl font-headline font-black uppercase text-white flex items-center gap-2">
+                   <Activity className="text-primary w-5 h-5" /> Tournament Betting Statistics
+                 </h3>
+                 <div className="grid sm:grid-cols-3 gap-4">
+                   {TOURNAMENT_STATS.map(stat => (
+                     <div key={stat.label} className="bg-surface-container-highest/30 p-5 rounded-2xl border border-white/5 text-center">
+                        <p className="text-[10px] font-black text-outline-variant uppercase tracking-widest mb-1">{stat.label}</p>
+                        <p className="text-2xl font-headline font-black text-white">{stat.value}</p>
+                     </div>
+                   ))}
+                 </div>
+               </div>
+               <div className="space-y-4">
+                 {BETTING_INSIGHTS.map((insight, idx) => (
+                   <div key={idx} className="glass-card border border-white/10 p-5 rounded-2xl">
+                     <h4 className="text-xs font-black uppercase text-white mb-2">{insight.title}</h4>
+                     <p className="text-[11px] text-on-surface-variant leading-relaxed">{insight.description}</p>
+                   </div>
+                 ))}
+               </div>
             </div>
           </motion.section>
         )}

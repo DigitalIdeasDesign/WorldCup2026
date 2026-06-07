@@ -223,6 +223,7 @@ export default function Profile({ user, profile, setProfile, onLogout }: any) {
     }
 
     setDeleting(true);
+    sessionStorage.setItem('terminating', 'true');
     try {
       // 1. Delete Firestore Data
       // We attempt to delete as much as we can.
@@ -255,6 +256,7 @@ export default function Profile({ user, profile, setProfile, onLogout }: any) {
       }
     } catch (err: any) {
       console.error("Deletion error:", err);
+      sessionStorage.removeItem('terminating');
       if (err?.code === 'auth/requires-recent-login') {
         toast.error("Security verification required. Please logout and login again before terminating your account.");
       } else {

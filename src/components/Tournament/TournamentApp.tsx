@@ -2004,24 +2004,6 @@ export default function TournamentApp({
             data.awards || { mvp: "", goldenBoot: "", goldenGlove: "" },
           );
           setIsLocked(data.isLocked || false);
-        } else {
-          // Initialize if doesn't exist
-          try {
-            setDoc(predRef, {
-              groupRankings: {},
-              wildcards: [],
-              bracket: {},
-              awards: { mvp: "", goldenBoot: "", goldenGlove: "" },
-              isLocked: false,
-              updatedAt: Date.now(),
-            });
-          } catch (err) {
-            handleFirestoreError(
-              err,
-              OperationType.WRITE,
-              `predictions/${user.uid}`,
-            );
-          }
         }
         setLoading(false);
       },
@@ -2039,10 +2021,15 @@ export default function TournamentApp({
     const unsubscribe = onSnapshot(
       leaderboardRef,
       (snapshot) => {
-        const picks = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        const picks = snapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }))
+          .filter((p: any) => {
+            const name = p.displayName?.toLowerCase() || "";
+            return !name.includes("maritza sanjuan");
+          });
         setAllUsersPicks(picks);
       },
       (err) => {
@@ -2055,7 +2042,7 @@ export default function TournamentApp({
 
   // Auto-save progress when state changes
   useEffect(() => {
-    if (loading || !user || isLocked) return;
+    if (loading || !user || isLocked || sessionStorage.getItem('terminating')) return;
 
     const timer = setTimeout(() => {
       const predRef = doc(db, "predictions", user.uid);
