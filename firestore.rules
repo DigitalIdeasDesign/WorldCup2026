@@ -117,7 +117,7 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == 'user' || isAdmin());
       allow update: if isOwner(userId) && isValidUser(request.resource.data) && (request.resource.data.role == resource.data.role || isAdmin());
-      allow delete: if isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     match /predictions/{userId} {
@@ -126,14 +126,14 @@ service cloud.firestore {
       allow update: if isOwner(userId) && 
                       (!('isLocked' in resource.data) || resource.data.isLocked == false) && 
                       isValidPrediction(request.resource.data);
-      allow delete: if isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     match /leaderboard/{userId} {
       allow read: if isAuthenticated();
       allow create: if isOwner(userId) && isValidLeaderboardEntry(request.resource.data);
       allow update: if isOwner(userId) && isValidLeaderboardEntry(request.resource.data);
-      allow delete: if isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
     }
 
     // Default deny

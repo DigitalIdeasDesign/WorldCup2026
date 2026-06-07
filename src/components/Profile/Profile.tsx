@@ -225,27 +225,40 @@ export default function Profile({ user, profile, setProfile, onLogout }: any) {
     setDeleting(true);
     try {
       // 1. Delete Firestore Data
+      // We attempt to delete as much as we can.
       const userRef = doc(db, 'users', user.uid);
       const predRef = doc(db, 'predictions', user.uid);
       const leaderboardRef = doc(db, 'leaderboard', user.uid);
 
-      await Promise.all([
-        deleteDoc(leaderboardRef),
-        deleteDoc(predRef),
-        deleteDoc(userRef)
-      ]);
+      try {
+        await Promise.all([
+          deleteDoc(leaderboardRef),
+          deleteDoc(predRef),
+          deleteDoc(userRef)
+        ]);
+      } catch (firestoreErr) {
+        console.error("Firestore cleanup failed, but attempting account termination:", firestoreErr);
+      }
 
       // 2. Delete Auth Account
+      // This will automatically log the user out if successful.
       await user.delete();
 
-      toast.success("All records purged. Safe journey, Scout.");
-      navigate('/login');
+      toast.success("Account terminated and all records purged.");
+      
+      // If we haven't been redirected yet, force navigate to home
+      // home will then redirect to login since user is null
+      navigate('/');
+      
+      if (onLogout) {
+        onLogout();
+      }
     } catch (err: any) {
       console.error("Deletion error:", err);
       if (err?.code === 'auth/requires-recent-login') {
-        toast.error("Security verification required. Please logout and login again before deleting.");
+        toast.error("Security verification required. Please logout and login again before terminating your account.");
       } else {
-        toast.error("Failed to complete data purge. Some systems may still hold records.");
+        toast.error("Failed to complete data purge. Some accounts may still hold records. Please try logging out and in again.");
       }
     } finally {
       setDeleting(false);
